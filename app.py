@@ -5,11 +5,44 @@ import json
 from datetime import datetime
 import urllib.parse
 import altair as alt
+import base64
 
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. CARREGAMENTO DO COFRE (SENHAS E TEXTOS)
+# 1. MARCA D'ÁGUA DE FUNDO
+# (Basta ter uma imagem chamada logo.png na mesma pasta do sistema)
+# -------------------------------------------------------------------
+imagem_espaco = "logo.png"
+
+if os.path.exists(imagem_espaco):
+    with open(imagem_espaco, "rb") as arquivo_img:
+        img_codificada = base64.b64encode(arquivo_img.read()).decode()
+    
+    css_marca_dagua = f"""
+    <style>
+    [data-testid="stAppViewContainer"]::before {{
+        content: "";
+        background-image: url("data:image/png;base64,{img_codificada}");
+        background-size: 500px; /* Tamanho do fundo falso */
+        background-position: center;
+        background-repeat: no-repeat;
+        background-attachment: fixed;
+        position: fixed;
+        top: 0;
+        left: 0;
+        width: 100%;
+        height: 100%;
+        opacity: 0.12; /* Transparência (12%) para não atrapalhar a leitura */
+        pointer-events: none; /* Garante que a imagem não bloqueie cliques */
+        z-index: 0;
+    }}
+    </style>
+    """
+    st.markdown(css_marca_dagua, unsafe_allow_html=True)
+
+# -------------------------------------------------------------------
+# 2. CARREGAMENTO DO COFRE (SENHAS E TEXTOS)
 # -------------------------------------------------------------------
 arquivo_textos = "config_textos.json"
 
@@ -36,7 +69,7 @@ txt_atrasado = config_textos.get("msg_atrasado", "Notamos que sua mensalidade co
 txt_niver = config_textos.get("msg_aniversario", "Toda a equipe do Pingo D'água deseja um Feliz Aniversário! 🎂🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 2. TELA DE LOGIN E SEGURANÇA
+# 3. TELA DE LOGIN E SEGURANÇA
 # -------------------------------------------------------------------
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
@@ -65,7 +98,7 @@ if "transacoes_feitas" not in st.session_state:
 hoje = datetime.now().date()
 
 # -------------------------------------------------------------------
-# 3. BANCO DE PREÇOS DINÂMICO
+# 4. BANCO DE PREÇOS DINÂMICO
 # -------------------------------------------------------------------
 arquivo_precos = "banco_precos.csv"
 
@@ -320,7 +353,6 @@ with aba1:
         df_grafico_turmas = df_ativos["Modalidade"].value_counts().reset_index()
         df_grafico_turmas.columns = ["Turma", "Quantidade de Alunos"]
         
-        # O comando axis=alt.Axis(tickMinStep=1, format="d") trava o gráfico apenas em números inteiros (1, 2, 3)
         grafico_turmas = alt.Chart(df_grafico_turmas).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5).encode(
             x=alt.X("Turma:N", sort="-y", title="Modalidade", axis=alt.Axis(labelAngle=-45)),
             y=alt.Y("Quantidade de Alunos:Q", title="Alunos Matriculados", axis=alt.Axis(tickMinStep=1, format="d")),
