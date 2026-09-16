@@ -320,9 +320,10 @@ with aba1:
         df_grafico_turmas = df_ativos["Modalidade"].value_counts().reset_index()
         df_grafico_turmas.columns = ["Turma", "Quantidade de Alunos"]
         
+        # O comando axis=alt.Axis(tickMinStep=1, format="d") trava o gráfico apenas em números inteiros (1, 2, 3)
         grafico_turmas = alt.Chart(df_grafico_turmas).mark_bar(cornerRadiusTopLeft=5, cornerRadiusTopRight=5).encode(
             x=alt.X("Turma:N", sort="-y", title="Modalidade", axis=alt.Axis(labelAngle=-45)),
-            y=alt.Y("Quantidade de Alunos:Q", title="Alunos Matriculados"),
+            y=alt.Y("Quantidade de Alunos:Q", title="Alunos Matriculados", axis=alt.Axis(tickMinStep=1, format="d")),
             color=alt.Color("Turma:N", scale=alt.Scale(scheme='category10'), legend=None),
             tooltip=["Turma", "Quantidade de Alunos"]
         ).properties(height=400)
