@@ -11,22 +11,19 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Mágica com JS e HTML5)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (WhatsApp + Impressão Perfeita)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    # Prepara a logo para o HTML
     img_base64 = ""
     if os.path.exists("logo.png"):
         with open("logo.png", "rb") as img_file:
             img_base64 = base64.b64encode(img_file.read()).decode()
             
-    # Limpa o telefone para o link
     numero_zap = str(telefone).replace(' ', '').replace('-', '')
     
-    # O HTML mágico que desenha perfeito e tem a função de copiar
     html_code = f"""
     <!DOCTYPE html>
     <html lang="pt-BR">
@@ -49,11 +46,51 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
+            /* A linha de assinatura fica invisível na tela normal e no Zap */
+            .assinatura-print {{ display: none; }}
+
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
             .btn-zap {{ background-color: #25D366; color: white; }}
             .btn-zap:hover {{ background-color: #1ebe57; }}
             .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
             .btn-down:hover {{ background-color: #e2e6ea; }}
+            
+            /* O SEGREDO MÁGICO PARA A IMPRESSORA FÍSICA */
+            @media print {{
+                body * {{ visibility: hidden; }} /* Esconde os botões */
+                #recibo, #recibo * {{ visibility: visible; }} /* Mostra só o recibo */
+                
+                #recibo {{
+                    position: absolute; left: 0; top: 0;
+                    width: 100%; max-width: 100%;
+                    border: none !important; box-shadow: none !important;
+                    padding: 40px; margin: 0;
+                }}
+                
+                /* Aumenta a letra para os idosos enxergarem bem */
+                .cabecalho h3 {{ font-size: 32px !important; }}
+                .linha strong {{ font-size: 16px !important; }}
+                .linha span {{ font-size: 26px !important; }}
+                .confirmado {{ font-size: 22px !important; padding: 20px; }}
+                
+                /* Faz a assinatura aparecer apenas no papel */
+                .assinatura-print {{
+                    display: block !important;
+                    margin-top: 100px;
+                    text-align: center;
+                }}
+                .linha-assinatura {{
+                    border-top: 2px solid #000;
+                    width: 60%;
+                    margin: 0 auto 10px auto;
+                }}
+                .assinatura-print p {{
+                    margin: 5px 0;
+                    font-size: 18px;
+                    color: #000;
+                    font-weight: bold;
+                }}
+            }}
         </style>
     </head>
     <body>
@@ -62,7 +99,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="cabecalho">
             <img src="data:image/png;base64,{img_base64}" alt="Logo">
             <h3>PINGO D'ÁGUA NATAÇÃO</h3>
-            <p>RECIBO ELETRÔNICO</p>
+            <p>RECIBO DE PAGAMENTO</p>
         </div>
         <div class="divisor"></div>
         <div class="linha"><strong>ALUNO(A):</strong><span>{nome_aluno}</span></div>
@@ -71,14 +108,19 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="linha"><strong>DATA:</strong><span>{data_hoje}</span></div>
         <div class="divisor"></div>
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
+        
+        <!-- Esta parte só vai aparecer no papel impresso! -->
+        <div class="assinatura-print">
+            <div class="linha-assinatura"></div>
+            <p>Assinatura do Responsável</p>
+            <p>Pingo D'água Natação</p>
+        </div>
     </div>
 
-    <!-- BOTÃO MÁGICO DE COPIAR E ABRIR O ZAP -->
+    <!-- BOTÕES DE AÇÃO -->
     <button class="btn btn-zap" onclick="copiarEEnviar()">💬 Copiar e Abrir WhatsApp</button>
-    
-    <!-- OPÇÕES RESERVAS -->
+    <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir na Máquina (Papel)</button>
     <button class="btn btn-down" onclick="baixar()">⬇️ Baixar Imagem (Opcional)</button>
-    <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir na Máquina</button>
 
     <script>
         function copiarEEnviar() {{
@@ -86,15 +128,12 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             var textoOriginal = btn.innerHTML;
             btn.innerHTML = "⏳ Copiando para memória...";
             
-            // O HTML2Canvas "tira a foto" em altíssima qualidade (scale: 3)
             html2canvas(document.querySelector("#recibo"), {{scale: 3}}).then(canvas => {{
                 canvas.toBlob(blob => {{
                     try {{
                         const item = new ClipboardItem({{ "image/png": blob }});
                         navigator.clipboard.write([item]).then(() => {{
                             btn.innerHTML = "✅ Copiado! Cole no WhatsApp (Ctrl+V)";
-                            
-                            // Abre o WhatsApp com um aviso para colar a foto
                             setTimeout(() => {{
                                 window.open("https://wa.me/55{numero_zap}?text=Ol%C3%A1!%20Tudo%20bem%3F%20Segue%20o%20seu%20comprovante%20de%20pagamento.%20%28Pressione%20'Colar'%20aqui%20na%20mensagem%20para%20receber%20a%20imagem%29%20%F0%9F%8F%8A%E2%80%8D%E2%99%82%EF%B8%8F%F0%9F%92%A6", "_blank");
                                 btn.innerHTML = textoOriginal;
@@ -124,7 +163,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     </html>
     """
     
-    # Renderiza tudo na tela perfeitamente
     components.html(html_code, height=650)
 
 # -------------------------------------------------------------------
