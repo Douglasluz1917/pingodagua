@@ -6,110 +6,111 @@ from datetime import datetime
 import urllib.parse
 import altair as alt
 import base64
-import streamlit.components.v1 as components
+import io
+from PIL import Image, ImageDraw, ImageFont
 
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
-from PIL import Image, ImageDraw, ImageFont
-import io
-
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Download da Imagem)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Versão HD - Alta Resolução)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    # === CRIAÇÃO DA IMAGEM DO RECIBO ===
-    # Cria um fundo branco de tamanho fixo
-    largura, altura = 400, 450
+    # === CRIAÇÃO DA IMAGEM DO RECIBO EM ALTA RESOLUÇÃO (HD) ===
+    largura, altura = 800, 950
     img_recibo = Image.new('RGB', (largura, altura), color='white')
     draw = ImageDraw.Draw(img_recibo)
     
-    # Tenta usar uma fonte padrão. Se não achar, usa a básica do sistema
     try:
-        fonte_titulo = ImageFont.truetype("arialbd.ttf", 20)
-        fonte_texto = ImageFont.truetype("arial.ttf", 16)
-        fonte_destaque = ImageFont.truetype("arialbd.ttf", 16)
+        fonte_titulo = ImageFont.truetype("arialbd.ttf", 45)
+        fonte_subtitulo = ImageFont.truetype("arialbd.ttf", 35)
+        fonte_texto = ImageFont.truetype("arial.ttf", 32)
+        fonte_destaque = ImageFont.truetype("arialbd.ttf", 34)
     except IOError:
+        st.warning("⚠️ Fonte Arial não encontrada no seu sistema. Usando a fonte padrão.")
         fonte_titulo = ImageFont.load_default()
+        fonte_subtitulo = ImageFont.load_default()
         fonte_texto = ImageFont.load_default()
         fonte_destaque = ImageFont.load_default()
 
-    # Tenta colar a Logo no topo
-    y_atual = 20
+    y_atual = 40
+    
+    # Colocando a Logo
     if os.path.exists("logo.png"):
         try:
             logo = Image.open("logo.png")
-            # Redimensiona a logo para não ficar gigante
-            logo.thumbnail((150, 150))
+            logo.thumbnail((250, 250))
             pos_x = (largura - logo.width) // 2
             img_recibo.paste(logo, (pos_x, y_atual))
-            y_atual += logo.height + 15
+            y_atual += logo.height + 30
         except Exception:
             pass
 
-    # Desenhando o texto no recibo
-    draw.text((largura//2, y_atual), "PINGO D'ÁGUA NATAÇÃO", fill="black", font=fonte_titulo, anchor="mt")
-    y_atual += 30
-    draw.text((largura//2, y_atual), "RECIBO ELETRÔNICO", fill="#005A9C", font=fonte_titulo, anchor="mt")
-    y_atual += 40
+    # Cabeçalho
+    draw.text((largura//2, y_atual), "PINGO D'ÁGUA NATAÇÃO", fill="#000000", font=fonte_titulo, anchor="mt")
+    y_atual += 60
+    draw.text((largura//2, y_atual), "RECIBO ELETRÔNICO", fill="#005A9C", font=fonte_subtitulo, anchor="mt")
+    y_atual += 80
     
-    # Linha separadora
-    draw.line([(30, y_atual), (370, y_atual)], fill="#ccc", width=2)
-    y_atual += 20
+    # Linha separadora superior
+    draw.line([(60, y_atual), (740, y_atual)], fill="#cccccc", width=3)
+    y_atual += 50
     
-    # Dados do Aluno
-    draw.text((30, y_atual), "ALUNO(A):", fill="#555", font=fonte_texto)
-    draw.text((130, y_atual), nome_aluno, fill="black", font=fonte_destaque)
-    y_atual += 30
+    # Dados do Pagamento
+    margem_esq = 60
+    coluna_dados = 280
     
-    draw.text((30, y_atual), "REFERÊNCIA:", fill="#555", font=fonte_texto)
-    draw.text((130, y_atual), modalidade, fill="black", font=fonte_destaque)
-    y_atual += 30
+    draw.text((margem_esq, y_atual), "ALUNO(A):", fill="#555555", font=fonte_texto)
+    draw.text((coluna_dados, y_atual), nome_aluno, fill="#000000", font=fonte_destaque)
+    y_atual += 60
     
-    draw.text((30, y_atual), "VALOR:", fill="#555", font=fonte_texto)
-    draw.text((130, y_atual), f"R$ {valor_pago}", fill="black", font=fonte_destaque)
-    y_atual += 30
+    draw.text((margem_esq, y_atual), "REFERÊNCIA:", fill="#555555", font=fonte_texto)
+    draw.text((coluna_dados, y_atual), modalidade, fill="#000000", font=fonte_destaque)
+    y_atual += 60
     
-    draw.text((30, y_atual), "DATA:", fill="#555", font=fonte_texto)
-    draw.text((130, y_atual), data_hoje, fill="black", font=fonte_destaque)
-    y_atual += 40
+    draw.text((margem_esq, y_atual), "VALOR:", fill="#555555", font=fonte_texto)
+    draw.text((coluna_dados, y_atual), f"R$ {valor_pago}", fill="#000000", font=fonte_destaque)
+    y_atual += 60
     
-    # Linha separadora
-    draw.line([(30, y_atual), (370, y_atual)], fill="#ccc", width=2)
-    y_atual += 20
+    draw.text((margem_esq, y_atual), "DATA:", fill="#555555", font=fonte_texto)
+    draw.text((coluna_dados, y_atual), data_hoje, fill="#000000", font=fonte_destaque)
+    y_atual += 80
     
-    draw.text((largura//2, y_atual), "✅ PAGAMENTO CONFIRMADO", fill="green", font=fonte_destaque, anchor="mt")
+    # Linha separadora inferior
+    draw.line([(60, y_atual), (740, y_atual)], fill="#cccccc", width=3)
+    y_atual += 50
+    
+    # Confirmação
+    draw.text((largura//2, y_atual), "✅ PAGAMENTO CONFIRMADO", fill="#28a745", font=fonte_destaque, anchor="mt")
 
-    # Prepara a imagem para ser baixada pelo Streamlit
+    # Prepara a imagem para uso
     img_byte_arr = io.BytesIO()
     img_recibo.save(img_byte_arr, format='PNG')
     img_bytes = img_byte_arr.getvalue()
-
-    # === FIM DA CRIAÇÃO DA IMAGEM ===
     
-    # 1. MOSTRAR A IMAGEM NA TELA
-    st.image(img_bytes, caption="Visualização do Recibo", use_container_width=True)
+    # Mostra a Imagem na Tela do Streamlit
+    st.image(img_bytes, caption="Recibo em Alta Resolução (HD)", use_container_width=True)
     
-    # 2. O BOTÃO MÁGICO DE DOWNLOAD
+    # Botões de Ação
     col1, col2 = st.columns(2)
     with col1:
         st.download_button(
-            label="⬇️ Baixar Imagem",
+            label="⬇️ Baixar Imagem (Alta Qualidade)",
             data=img_bytes,
             file_name=f"Recibo_PingoDagua_{nome_aluno}_{data_hoje.replace('/', '-')}.png",
             mime="image/png",
             use_container_width=True
         )
         
-    # 3. O BOTÃO DO WHATSAPP (Abre o Zap com texto amigável, pronto para ela anexar a foto)
     with col2:
         msg_foto = urllib.parse.quote("Olá! Tudo bem? Segue o seu comprovante de pagamento. Muito obrigado! 🏊‍♂️💦")
         link_wpp_foto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={msg_foto}"
-        st.link_button("💬 Abrir WhatsApp", link_wpp_foto, use_container_width=True)
+        st.link_button("💬 Abrir WhatsApp (Para enviar a foto)", link_wpp_foto, use_container_width=True)
+
 # -------------------------------------------------------------------
-# 2. MARCA D'ÁGUA DE FUNDO (logo.png)
+# 2. MARCA D'ÁGUA DE FUNDO
 # -------------------------------------------------------------------
 imagem_espaco = "logo.png"
 
@@ -196,7 +197,7 @@ if "transacoes_feitas" not in st.session_state:
 hoje = datetime.now().date()
 
 # -------------------------------------------------------------------
-# 5. BANCO DE PREÇOS DINÂMICO
+# 5. BANCO DE PREÇOS DINÂMICO E CARREGAMENTO GERAL
 # -------------------------------------------------------------------
 arquivo_precos = "banco_precos.csv"
 
@@ -413,7 +414,6 @@ with aba1:
         valor_base = row['Mensalidade (R$)']
         valor_formatado_br = f"{valor_base:.2f}".replace(".", ",")
         
-        # Lógica de botões: Se estiver atrasado/vencendo e AINDA não foi pago na sessão atual
         if row["Status"] in ["Atrasado", "Perto de vencer"] and id_cobranca not in st.session_state["transacoes_feitas"]:
             col_wpp, col_pago = st.columns([3, 1])
             
@@ -443,7 +443,6 @@ with aba1:
                     use_container_width=True
                 )
         
-        # Se estiver "Em dia" ou acabou de ser pago, mostra a opção de RECIBO
         else:
             col_aviso, col_recibo = st.columns([3, 1])
             with col_aviso:
