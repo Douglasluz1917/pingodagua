@@ -6,12 +6,71 @@ from datetime import datetime
 import urllib.parse
 import altair as alt
 import base64
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. MARCA D'ÁGUA DE FUNDO
-# (Basta ter uma imagem chamada logo.png na mesma pasta do sistema)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (WhatsApp + Impressão)
+# -------------------------------------------------------------------
+@st.dialog("🧾 Comprovante de Pagamento")
+def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
+    data_hoje = datetime.now().strftime("%d/%m/%Y")
+    
+    # OPÇÃO 1: WHATSAPP
+    texto_wpp = f"🧾 *RECIBO PINGO D'ÁGUA* 🏊‍♂️\n\nRecebemos de: *{nome_aluno}*\nReferente a: {modalidade}\nValor: *R$ {valor_pago}*\nData: {data_hoje}\n\nMuito obrigado pela confiança! 💦"
+    link_wpp = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={urllib.parse.quote(texto_wpp)}"
+    
+    st.write("Escolha como deseja enviar o comprovante:")
+    st.link_button("🟢 Enviar Recibo pelo WhatsApp", link_wpp, use_container_width=True)
+    
+    st.write("---")
+    st.write("🖨️ Ou imprima a versão física abaixo:")
+    
+    # OPÇÃO 2: HTML COM BOTÃO DE IMPRESSÃO
+    img_base64 = ""
+    if os.path.exists("logo.png"):
+        with open("logo.png", "rb") as img_file:
+            img_base64 = base64.b64encode(img_file.read()).decode()
+            
+    html_recibo = f"""
+    <div style="font-family: Arial, sans-serif; border: 2px dashed #ccc; padding: 20px; max-width: 100%; background-color: white; color: black;">
+        <div style="text-align: center;">
+            <img src="data:image/png;base64,{img_base64}" style="max-height: 60px; margin-bottom: 10px;">
+            <h4 style="margin: 0; color: #005A9C;">PINGO D'ÁGUA NATAÇÃO</h4>
+            <p style="margin: 0; font-size: 11px; color: #555;">CNPJ: 00.000.000/0001-00</p>
+            <hr style="border: 1px solid #eee; margin: 10px 0;">
+            <h3 style="margin: 0; color: #333;">RECIBO</h3>
+        </div>
+        
+        <div style="margin-top: 15px; line-height: 1.5; font-size: 14px;">
+            <p>Recebemos de <strong>{nome_aluno}</strong> a quantia de <strong>R$ {valor_pago}</strong> referente a <strong>{modalidade}</strong>.</p>
+        </div>
+        
+        <div style="margin-top: 30px; text-align: center;">
+            <p style="font-size: 12px; color: #444;">Jaboatão dos Guararapes, {data_hoje}</p>
+            <br>
+            <hr style="border: 1px solid #000; width: 60%; margin: auto;">
+            <p style="margin: 5px 0 0 0; font-size: 12px;">Assinatura do Responsável</p>
+        </div>
+        
+        <style>
+            @media print {{
+                .no-print {{ display: none !important; }}
+            }}
+        </style>
+        
+        <div style="text-align: center; margin-top: 20px;" class="no-print">
+            <button onclick="window.print()" style="padding: 10px 20px; background-color: #005A9C; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
+                🖨️ Imprimir Recibo
+            </button>
+        </div>
+    </div>
+    """
+    components.html(html_recibo, height=450)
+
+# -------------------------------------------------------------------
+# 2. MARCA D'ÁGUA DE FUNDO (logo.png)
 # -------------------------------------------------------------------
 imagem_espaco = "logo.png"
 
@@ -24,7 +83,7 @@ if os.path.exists(imagem_espaco):
     [data-testid="stAppViewContainer"]::before {{
         content: "";
         background-image: url("data:image/png;base64,{img_codificada}");
-        background-size: 500px; /* Tamanho do fundo falso */
+        background-size: 500px;
         background-position: center;
         background-repeat: no-repeat;
         background-attachment: fixed;
@@ -33,8 +92,8 @@ if os.path.exists(imagem_espaco):
         left: 0;
         width: 100%;
         height: 100%;
-        opacity: 0.12; /* Transparência (12%) para não atrapalhar a leitura */
-        pointer-events: none; /* Garante que a imagem não bloqueie cliques */
+        opacity: 0.12; 
+        pointer-events: none; 
         z-index: 0;
     }}
     </style>
@@ -42,7 +101,7 @@ if os.path.exists(imagem_espaco):
     st.markdown(css_marca_dagua, unsafe_allow_html=True)
 
 # -------------------------------------------------------------------
-# 2. CARREGAMENTO DO COFRE (SENHAS E TEXTOS)
+# 3. CARREGAMENTO DO COFRE (SENHAS E TEXTOS)
 # -------------------------------------------------------------------
 arquivo_textos = "config_textos.json"
 
@@ -69,7 +128,7 @@ txt_atrasado = config_textos.get("msg_atrasado", "Notamos que sua mensalidade co
 txt_niver = config_textos.get("msg_aniversario", "Toda a equipe do Pingo D'água deseja um Feliz Aniversário! 🎂🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 3. TELA DE LOGIN E SEGURANÇA
+# 4. TELA DE LOGIN E SEGURANÇA
 # -------------------------------------------------------------------
 if "logado" not in st.session_state:
     st.session_state["logado"] = False
@@ -98,7 +157,7 @@ if "transacoes_feitas" not in st.session_state:
 hoje = datetime.now().date()
 
 # -------------------------------------------------------------------
-# 4. BANCO DE PREÇOS DINÂMICO
+# 5. BANCO DE PREÇOS DINÂMICO
 # -------------------------------------------------------------------
 arquivo_precos = "banco_precos.csv"
 
@@ -278,7 +337,7 @@ with aba1:
         st.rerun()
 
     st.write("---")
-    st.subheader("📋 Painel de Cobrança Automática")
+    st.subheader("📋 Painel de Cobrança Automática e Recibos")
     
     df_visualizacao = df_editado[df_editado["Matrícula"] == "Ativo"].copy()
     
@@ -311,41 +370,48 @@ with aba1:
         return hoje.year - nascimento.year - ((hoje.month, hoje.day) < (nascimento.month, nascimento.day))
 
     for index, row in df_visualizacao.iterrows():
-        if row["Status"] in ["Atrasado", "Perto de vencer"]:
+        id_cobranca = f"{row['Nome do Aluno']}_{row['Data de Vencimento']}"
+        valor_base = row['Mensalidade (R$)']
+        valor_formatado_br = f"{valor_base:.2f}".replace(".", ",")
+        
+        # Lógica de botões: Se estiver atrasado/vencendo e AINDA não foi pago na sessão atual
+        if row["Status"] in ["Atrasado", "Perto de vencer"] and id_cobranca not in st.session_state["transacoes_feitas"]:
             col_wpp, col_pago = st.columns([3, 1])
             
             with col_wpp:
                 idade = calcular_idade(row['Data de Nascimento'])
                 saudacao = f"Olá, responsável por {row['Nome do Aluno']}" if idade < 18 else f"Olá, {row['Nome do Aluno']}"
                 
-                valor_base = row['Mensalidade (R$)']
                 dias_atraso = (hoje - row['Data de Vencimento']).days if row['Status'] == 'Atrasado' else 0
-                
                 valor_final = valor_base + 10.00 if dias_atraso > 0 else valor_base
                 txt_valor = f"O valor atualizado (com taxa)" if dias_atraso > 0 else "O valor da sua mensalidade"
-                valor_formatado_br = f"{valor_final:.2f}".replace(".", ",")
+                valor_final_br = f"{valor_final:.2f}".replace(".", ",")
                 
                 icone = "🔴" if row["Status"] == "Atrasado" else "🟡"
                 texto_base = txt_atrasado if row["Status"] == "Atrasado" else txt_vencendo
                 
-                texto_cobranca = f"{saudacao}! 🏊‍♂️\n\nAqui é do Pingo D'água. {texto_base}\n\n{txt_valor} é de *R$ {valor_formatado_br}*.\n\nPara facilitar, segue nossa chave PIX:\n🔑 {txt_pix}\n👤 {txt_recebedor}\n\nQualquer dúvida, estamos à disposição!"
+                texto_cobranca = f"{saudacao}! 🏊‍♂️\n\nAqui é do Pingo D'água. {texto_base}\n\n{txt_valor} é de *R$ {valor_final_br}*.\n\nPara facilitar, segue nossa chave PIX:\n🔑 {txt_pix}\n👤 {txt_recebedor}\n\nQualquer dúvida, estamos à disposição!"
                 
                 link_wpp = f"https://wa.me/55{str(row['Telefone']).replace(' ', '')}?text={urllib.parse.quote(texto_cobranca)}"
-                st.link_button(f"{icone} Cobrar {row['Nome do Aluno']} (R$ {valor_formatado_br})", link_wpp, use_container_width=True)
+                st.link_button(f"{icone} Cobrar {row['Nome do Aluno']} (R$ {valor_final_br})", link_wpp, use_container_width=True)
                 
             with col_pago:
-                id_cobranca = f"{row['Nome do Aluno']}_{row['Data de Vencimento']}"
-                
-                if id_cobranca in st.session_state["transacoes_feitas"]:
-                    st.success("✅ Pago!")
-                else:
-                    st.button(
-                        "✅ Confirmar", 
-                        key=f"btn_pago_{index}_{row['Data de Vencimento']}", 
-                        on_click=processar_pagamento, 
-                        args=(index, row['Nome do Aluno'], row['Modalidade'], row['Data de Vencimento'], valor_final),
-                        use_container_width=True
-                    )
+                st.button(
+                    "✅ Confirmar Pagamento", 
+                    key=f"btn_pago_{index}_{row['Data de Vencimento']}", 
+                    on_click=processar_pagamento, 
+                    args=(index, row['Nome do Aluno'], row['Modalidade'], row['Data de Vencimento'], valor_final),
+                    use_container_width=True
+                )
+        
+        # Se estiver "Em dia" ou acabou de ser pago, mostra a opção de RECIBO
+        else:
+            col_aviso, col_recibo = st.columns([3, 1])
+            with col_aviso:
+                st.success(f"✅ {row['Nome do Aluno']} está com o pagamento em dia!")
+            with col_recibo:
+                if st.button(f"🧾 Ver Recibo", key=f"btn_recibo_{index}_{id_cobranca}", use_container_width=True):
+                    abrir_janela_recibo(row['Nome do Aluno'], row['Modalidade'], valor_formatado_br, row['Telefone'])
                     
     st.write("---")
     st.subheader("📊 Gráfico: Aulas Mais Procuradas")
