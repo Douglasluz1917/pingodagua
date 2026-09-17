@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (WhatsApp + Impressão Perfeita)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Dois Layouts Separados)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
@@ -32,7 +32,9 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: white; margin: 0; padding: 15px; }}
-            #recibo {{
+            
+            /* --- 1. ESTILO DO RECIBO DIGITAL (TELA E WHATSAPP) --- */
+            #recibo-digital {{
                 border: 2px dashed #aaa; padding: 25px; width: 320px; background: #fff;
                 color: #222; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
             }}
@@ -46,60 +48,51 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
-            /* A linha de assinatura fica invisível na tela normal e no Zap */
-            .assinatura-print {{ display: none; }}
-
+            /* --- 2. ESTILO DO RECIBO IMPRESSO (FORMAL E OCULTO NA TELA) --- */
+            #recibo-impresso {{ display: none; }} /* Escondido por padrão */
+            
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
             .btn-zap {{ background-color: #25D366; color: white; }}
             .btn-zap:hover {{ background-color: #1ebe57; }}
             .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
             .btn-down:hover {{ background-color: #e2e6ea; }}
             
-            /* O SEGREDO MÁGICO PARA A IMPRESSORA FÍSICA */
+            /* --- 3. MÁGICA DA IMPRESSORA --- */
             @media print {{
-                body * {{ visibility: hidden; }} /* Esconde os botões */
-                #recibo, #recibo * {{ visibility: visible; }} /* Mostra só o recibo */
+                body * {{ visibility: hidden; display: none !important; }} /* Esconde tudo da tela */
                 
-                #recibo {{
+                #recibo-impresso, #recibo-impresso * {{ 
+                    visibility: visible; 
+                    display: block !important; 
+                }} /* Mostra só o recibo formal */
+                
+                #recibo-impresso {{
                     position: absolute; left: 0; top: 0;
-                    width: 100%; max-width: 100%;
-                    border: none !important; box-shadow: none !important;
-                    padding: 40px; margin: 0;
+                    width: 100%; 
+                    font-family: 'Times New Roman', Times, serif;
+                    color: black;
+                    padding: 30px;
                 }}
                 
-                /* Aumenta a letra para os idosos enxergarem bem */
-                .cabecalho h3 {{ font-size: 32px !important; }}
-                .linha strong {{ font-size: 16px !important; }}
-                .linha span {{ font-size: 26px !important; }}
-                .confirmado {{ font-size: 22px !important; padding: 20px; }}
-                
-                /* Faz a assinatura aparecer apenas no papel */
-                .assinatura-print {{
-                    display: block !important;
-                    margin-top: 100px;
-                    text-align: center;
-                }}
-                .linha-assinatura {{
-                    border-top: 2px solid #000;
-                    width: 60%;
-                    margin: 0 auto 10px auto;
-                }}
-                .assinatura-print p {{
-                    margin: 5px 0;
-                    font-size: 18px;
-                    color: #000;
-                    font-weight: bold;
-                }}
+                .print-table {{ width: 100%; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px; }}
+                .print-logo {{ max-height: 90px; }}
+                .print-texto-formal {{ font-size: 20px; line-height: 2.0; text-align: justify; margin-bottom: 20px; }}
+                .print-assinatura {{ text-align: center; margin-top: 80px; font-size: 18px; }}
+                .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 40px auto 10px auto; }}
+                .print-tesoura {{ margin-top: 60px; border-top: 1px dashed #666; text-align: center; color: #666; padding-top: 10px; font-family: Arial, sans-serif; font-size: 14px; }}
             }}
         </style>
     </head>
     <body>
 
-    <div id="recibo">
+    <!-- ========================================== -->
+    <!-- RECIBO DIGITAL (PARA A TELA E WHATSAPP)    -->
+    <!-- ========================================== -->
+    <div id="recibo-digital">
         <div class="cabecalho">
             <img src="data:image/png;base64,{img_base64}" alt="Logo">
             <h3>PINGO D'ÁGUA NATAÇÃO</h3>
-            <p>RECIBO DE PAGAMENTO</p>
+            <p>RECIBO DIGITAL</p>
         </div>
         <div class="divisor"></div>
         <div class="linha"><strong>ALUNO(A):</strong><span>{nome_aluno}</span></div>
@@ -108,19 +101,52 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="linha"><strong>DATA:</strong><span>{data_hoje}</span></div>
         <div class="divisor"></div>
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
+    </div>
+
+    <!-- ========================================== -->
+    <!-- RECIBO IMPRESSO (FORMAL E ELEGANTE)        -->
+    <!-- ========================================== -->
+    <div id="recibo-impresso">
+        <table class="print-table">
+            <tr>
+                <td style="width: 25%;"><img src="data:image/png;base64,{img_base64}" class="print-logo"></td>
+                <td style="width: 50%; vertical-align: middle;">
+                    <h2 style="margin: 0; font-size: 24px;">PINGO D'ÁGUA NATAÇÃO</h2>
+                    <p style="margin: 5px 0 0 0; font-size: 16px;">CNPJ: 00.000.000/0001-00</p>
+                    <p style="margin: 5px 0 0 0; font-size: 16px;">Jaboatão dos Guararapes - PE</p>
+                </td>
+                <td style="width: 25%; text-align: right; vertical-align: middle;">
+                    <h2 style="margin: 0; font-size: 28px; font-weight: normal;">RECIBO</h2>
+                    <h3 style="margin: 10px 0 0 0; font-size: 26px;">R$ {valor_pago}</h3>
+                </td>
+            </tr>
+        </table>
         
-        <!-- Esta parte só vai aparecer no papel impresso! -->
-        <div class="assinatura-print">
-            <div class="linha-assinatura"></div>
-            <p>Assinatura do Responsável</p>
-            <p>Pingo D'água Natação</p>
+        <div class="print-texto-formal">
+            Recebemos de <strong>{nome_aluno}</strong>, a quantia de <strong>R$ {valor_pago}</strong>, 
+            referente ao pagamento da mensalidade de <strong>{modalidade}</strong>.
+        </div>
+        
+        <div class="print-texto-formal">
+            Para maior clareza e validade, firmamos o presente recibo.
+        </div>
+        
+        <div class="print-assinatura">
+            <p>Jaboatão dos Guararapes, {data_hoje}</p>
+            <div class="print-linha-ass"></div>
+            <p style="margin: 0;"><strong>Assinatura do Responsável</strong></p>
+            <p style="margin: 5px 0 0 0;">Pingo D'água Natação</p>
+        </div>
+        
+        <div class="print-tesoura">
+            ✂️ ------------------------------------ Corte aqui ------------------------------------ ✂️
         </div>
     </div>
 
     <!-- BOTÕES DE AÇÃO -->
     <button class="btn btn-zap" onclick="copiarEEnviar()">💬 Copiar e Abrir WhatsApp</button>
-    <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir na Máquina (Papel)</button>
-    <button class="btn btn-down" onclick="baixar()">⬇️ Baixar Imagem (Opcional)</button>
+    <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir Recibo Formal</button>
+    <button class="btn btn-down" onclick="baixar()">⬇️ Baixar Imagem Digital</button>
 
     <script>
         function copiarEEnviar() {{
@@ -128,7 +154,8 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             var textoOriginal = btn.innerHTML;
             btn.innerHTML = "⏳ Copiando para memória...";
             
-            html2canvas(document.querySelector("#recibo"), {{scale: 3}}).then(canvas => {{
+            // Ele tira foto apenas do recibo digital
+            html2canvas(document.querySelector("#recibo-digital"), {{scale: 3}}).then(canvas => {{
                 canvas.toBlob(blob => {{
                     try {{
                         const item = new ClipboardItem({{ "image/png": blob }});
@@ -151,7 +178,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         }}
 
         function baixar() {{
-            html2canvas(document.querySelector("#recibo"), {{scale: 3}}).then(canvas => {{
+            html2canvas(document.querySelector("#recibo-digital"), {{scale: 3}}).then(canvas => {{
                 var link = document.createElement('a');
                 link.download = 'Recibo_{nome_aluno.replace(" ", "_")}.png';
                 link.href = canvas.toDataURL("image/png");
