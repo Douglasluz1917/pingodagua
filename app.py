@@ -11,63 +11,60 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (WhatsApp + Impressão)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Atualizada Profissional)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    # OPÇÃO 1: WHATSAPP
-    texto_wpp = f"🧾 *RECIBO PINGO D'ÁGUA* 🏊‍♂️\n\nRecebemos de: *{nome_aluno}*\nReferente a: {modalidade}\nValor: *R$ {valor_pago}*\nData: {data_hoje}\n\nMuito obrigado pela confiança! 💦"
-    link_wpp = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={urllib.parse.quote(texto_wpp)}"
+    st.write("### 1️⃣ Enviar Imagem Linda (Print)")
+    st.write("Tire um **Print (captura de tela)** do recibo abaixo e clique no botão para colar no WhatsApp do aluno:")
     
-    st.write("Escolha como deseja enviar o comprovante:")
-    st.link_button("🟢 Enviar Recibo pelo WhatsApp", link_wpp, use_container_width=True)
+    # Texto rápido só para introduzir a foto que ela vai colar
+    msg_foto = urllib.parse.quote("Olá! Tudo bem? Segue o seu comprovante de pagamento. Muito obrigado! 🏊‍♂️💦")
+    link_wpp_foto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={msg_foto}"
+    st.link_button(f"💬 Abrir WhatsApp de {nome_aluno} (Para colar a foto)", link_wpp_foto, use_container_width=True)
     
-    st.write("---")
-    st.write("🖨️ Ou imprima a versão física abaixo:")
-    
-    # OPÇÃO 2: HTML COM BOTÃO DE IMPRESSÃO
+    # O RECIBO VISUAL PARA TIRAR O PRINT OU IMPRIMIR
     img_base64 = ""
     if os.path.exists("logo.png"):
         with open("logo.png", "rb") as img_file:
             img_base64 = base64.b64encode(img_file.read()).decode()
             
     html_recibo = f"""
-    <div style="font-family: Arial, sans-serif; border: 2px dashed #ccc; padding: 20px; max-width: 100%; background-color: white; color: black;">
+    <div style="font-family: 'Courier New', Courier, monospace; border: 2px dashed #999; padding: 20px; max-width: 350px; margin: auto; background-color: #fff; color: #000; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
         <div style="text-align: center;">
-            <img src="data:image/png;base64,{img_base64}" style="max-height: 60px; margin-bottom: 10px;">
-            <h4 style="margin: 0; color: #005A9C;">PINGO D'ÁGUA NATAÇÃO</h4>
-            <p style="margin: 0; font-size: 11px; color: #555;">CNPJ: 00.000.000/0001-00</p>
-            <hr style="border: 1px solid #eee; margin: 10px 0;">
-            <h3 style="margin: 0; color: #333;">RECIBO</h3>
+            <img src="data:image/png;base64,{img_base64}" style="max-height: 50px; margin-bottom: 5px;">
+            <h4 style="margin: 0; color: #333; font-family: Arial, sans-serif;">PINGO D'ÁGUA NATAÇÃO</h4>
+            <hr style="border: 1px dashed #ccc; margin: 10px 0;">
+            <h3 style="margin: 0; font-size: 16px;">RECIBO ELETRÔNICO</h3>
         </div>
-        
-        <div style="margin-top: 15px; line-height: 1.5; font-size: 14px;">
-            <p>Recebemos de <strong>{nome_aluno}</strong> a quantia de <strong>R$ {valor_pago}</strong> referente a <strong>{modalidade}</strong>.</p>
+        <div style="margin-top: 15px; font-size: 14px; line-height: 1.6;">
+            <strong>ALUNO(A):</strong> {nome_aluno}<br>
+            <strong>REFERÊNCIA:</strong> {modalidade}<br>
+            <strong>VALOR:</strong> R$ {valor_pago}<br>
+            <strong>DATA:</strong> {data_hoje}
         </div>
-        
-        <div style="margin-top: 30px; text-align: center;">
-            <p style="font-size: 12px; color: #444;">Jaboatão dos Guararapes, {data_hoje}</p>
-            <br>
-            <hr style="border: 1px solid #000; width: 60%; margin: auto;">
-            <p style="margin: 5px 0 0 0; font-size: 12px;">Assinatura do Responsável</p>
+        <div style="margin-top: 20px; text-align: center; font-size: 14px; background-color: #e6f9e6; border: 1px solid #b3e6b3; padding: 5px;">
+            <strong>✅ PAGAMENTO CONFIRMADO</strong>
         </div>
-        
-        <style>
-            @media print {{
-                .no-print {{ display: none !important; }}
-            }}
-        </style>
-        
         <div style="text-align: center; margin-top: 20px;" class="no-print">
             <button onclick="window.print()" style="padding: 10px 20px; background-color: #005A9C; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
-                🖨️ Imprimir Recibo
+                🖨️ Imprimir
             </button>
         </div>
     </div>
     """
-    components.html(html_recibo, height=450)
+    components.html(html_recibo, height=420)
+    
+    st.write("---")
+    st.write("### 2️⃣ Enviar como Texto (Estilo Cupom)")
+    
+    # Novo formato de texto super alinhado (Estilo Maquininha)
+    texto_wpp_cupom = f"=========================\n💦 *PINGO D'ÁGUA NATAÇÃO* \n=========================\n🧾 *RECIBO ELETRÔNICO*\n\n👤 *Aluno:* {nome_aluno}\n🏊‍♂️ *Ref:* {modalidade}\n💰 *Valor:* R$ {valor_pago}\n📅 *Data:* {data_hoje}\n\n✅ *SITUAÇÃO: PAGO*\n=========================\nObrigado pela confiança!"
+    
+    link_wpp_texto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={urllib.parse.quote(texto_wpp_cupom)}"
+    st.link_button("🟢 Enviar Texto Formato Cupom", link_wpp_texto, use_container_width=True)
 
 # -------------------------------------------------------------------
 # 2. MARCA D'ÁGUA DE FUNDO (logo.png)
