@@ -6,108 +6,126 @@ from datetime import datetime
 import urllib.parse
 import altair as alt
 import base64
-import io
-from PIL import Image, ImageDraw, ImageFont
+import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Versão HD - Alta Resolução)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Mágica com JS e HTML5)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    # === CRIAÇÃO DA IMAGEM DO RECIBO EM ALTA RESOLUÇÃO (HD) ===
-    largura, altura = 800, 950
-    img_recibo = Image.new('RGB', (largura, altura), color='white')
-    draw = ImageDraw.Draw(img_recibo)
-    
-    try:
-        fonte_titulo = ImageFont.truetype("arialbd.ttf", 45)
-        fonte_subtitulo = ImageFont.truetype("arialbd.ttf", 35)
-        fonte_texto = ImageFont.truetype("arial.ttf", 32)
-        fonte_destaque = ImageFont.truetype("arialbd.ttf", 34)
-    except IOError:
-        st.warning("⚠️ Fonte Arial não encontrada no seu sistema. Usando a fonte padrão.")
-        fonte_titulo = ImageFont.load_default()
-        fonte_subtitulo = ImageFont.load_default()
-        fonte_texto = ImageFont.load_default()
-        fonte_destaque = ImageFont.load_default()
-
-    y_atual = 40
-    
-    # Colocando a Logo
+    # Prepara a logo para o HTML
+    img_base64 = ""
     if os.path.exists("logo.png"):
-        try:
-            logo = Image.open("logo.png")
-            logo.thumbnail((250, 250))
-            pos_x = (largura - logo.width) // 2
-            img_recibo.paste(logo, (pos_x, y_atual))
-            y_atual += logo.height + 30
-        except Exception:
-            pass
+        with open("logo.png", "rb") as img_file:
+            img_base64 = base64.b64encode(img_file.read()).decode()
+            
+    # Limpa o telefone para o link
+    numero_zap = str(telefone).replace(' ', '').replace('-', '')
+    
+    # O HTML mágico que desenha perfeito e tem a função de copiar
+    html_code = f"""
+    <!DOCTYPE html>
+    <html lang="pt-BR">
+    <head>
+        <meta charset="UTF-8">
+        <script src="https://cdnjs.cloudflare.com/ajax/libs/html2canvas/1.4.1/html2canvas.min.js"></script>
+        <style>
+            body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: white; margin: 0; padding: 15px; }}
+            #recibo {{
+                border: 2px dashed #aaa; padding: 25px; width: 320px; background: #fff;
+                color: #222; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
+            }}
+            .cabecalho {{ text-align: center; }}
+            .cabecalho img {{ max-height: 80px; margin-bottom: 10px; }}
+            .cabecalho h3 {{ margin: 0; color: #005A9C; font-size: 19px; }}
+            .cabecalho p {{ margin: 2px 0 10px 0; font-size: 12px; color: #777; }}
+            .divisor {{ border-top: 1px dashed #ccc; margin: 15px 0; }}
+            .linha {{ margin: 8px 0; font-size: 14px; text-align: left; }}
+            .linha strong {{ color: #666; display: block; font-size: 12px; text-transform: uppercase; }}
+            .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
+            .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
+            
+            .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
+            .btn-zap {{ background-color: #25D366; color: white; }}
+            .btn-zap:hover {{ background-color: #1ebe57; }}
+            .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
+            .btn-down:hover {{ background-color: #e2e6ea; }}
+        </style>
+    </head>
+    <body>
 
-    # Cabeçalho
-    draw.text((largura//2, y_atual), "PINGO D'ÁGUA NATAÇÃO", fill="#000000", font=fonte_titulo, anchor="mt")
-    y_atual += 60
-    draw.text((largura//2, y_atual), "RECIBO ELETRÔNICO", fill="#005A9C", font=fonte_subtitulo, anchor="mt")
-    y_atual += 80
-    
-    # Linha separadora superior
-    draw.line([(60, y_atual), (740, y_atual)], fill="#cccccc", width=3)
-    y_atual += 50
-    
-    # Dados do Pagamento
-    margem_esq = 60
-    coluna_dados = 280
-    
-    draw.text((margem_esq, y_atual), "ALUNO(A):", fill="#555555", font=fonte_texto)
-    draw.text((coluna_dados, y_atual), nome_aluno, fill="#000000", font=fonte_destaque)
-    y_atual += 60
-    
-    draw.text((margem_esq, y_atual), "REFERÊNCIA:", fill="#555555", font=fonte_texto)
-    draw.text((coluna_dados, y_atual), modalidade, fill="#000000", font=fonte_destaque)
-    y_atual += 60
-    
-    draw.text((margem_esq, y_atual), "VALOR:", fill="#555555", font=fonte_texto)
-    draw.text((coluna_dados, y_atual), f"R$ {valor_pago}", fill="#000000", font=fonte_destaque)
-    y_atual += 60
-    
-    draw.text((margem_esq, y_atual), "DATA:", fill="#555555", font=fonte_texto)
-    draw.text((coluna_dados, y_atual), data_hoje, fill="#000000", font=fonte_destaque)
-    y_atual += 80
-    
-    # Linha separadora inferior
-    draw.line([(60, y_atual), (740, y_atual)], fill="#cccccc", width=3)
-    y_atual += 50
-    
-    # Confirmação
-    draw.text((largura//2, y_atual), "✅ PAGAMENTO CONFIRMADO", fill="#28a745", font=fonte_destaque, anchor="mt")
+    <div id="recibo">
+        <div class="cabecalho">
+            <img src="data:image/png;base64,{img_base64}" alt="Logo">
+            <h3>PINGO D'ÁGUA NATAÇÃO</h3>
+            <p>RECIBO ELETRÔNICO</p>
+        </div>
+        <div class="divisor"></div>
+        <div class="linha"><strong>ALUNO(A):</strong><span>{nome_aluno}</span></div>
+        <div class="linha"><strong>REFERÊNCIA:</strong><span>{modalidade}</span></div>
+        <div class="linha"><strong>VALOR:</strong><span>R$ {valor_pago}</span></div>
+        <div class="linha"><strong>DATA:</strong><span>{data_hoje}</span></div>
+        <div class="divisor"></div>
+        <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
+    </div>
 
-    # Prepara a imagem para uso
-    img_byte_arr = io.BytesIO()
-    img_recibo.save(img_byte_arr, format='PNG')
-    img_bytes = img_byte_arr.getvalue()
+    <!-- BOTÃO MÁGICO DE COPIAR E ABRIR O ZAP -->
+    <button class="btn btn-zap" onclick="copiarEEnviar()">💬 Copiar e Abrir WhatsApp</button>
     
-    # Mostra a Imagem na Tela do Streamlit
-    st.image(img_bytes, caption="Recibo em Alta Resolução (HD)", use_container_width=True)
+    <!-- OPÇÕES RESERVAS -->
+    <button class="btn btn-down" onclick="baixar()">⬇️ Baixar Imagem (Opcional)</button>
+    <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir na Máquina</button>
+
+    <script>
+        function copiarEEnviar() {{
+            var btn = document.querySelector(".btn-zap");
+            var textoOriginal = btn.innerHTML;
+            btn.innerHTML = "⏳ Copiando para memória...";
+            
+            // O HTML2Canvas "tira a foto" em altíssima qualidade (scale: 3)
+            html2canvas(document.querySelector("#recibo"), {{scale: 3}}).then(canvas => {{
+                canvas.toBlob(blob => {{
+                    try {{
+                        const item = new ClipboardItem({{ "image/png": blob }});
+                        navigator.clipboard.write([item]).then(() => {{
+                            btn.innerHTML = "✅ Copiado! Cole no WhatsApp (Ctrl+V)";
+                            
+                            // Abre o WhatsApp com um aviso para colar a foto
+                            setTimeout(() => {{
+                                window.open("https://wa.me/55{numero_zap}?text=Ol%C3%A1!%20Tudo%20bem%3F%20Segue%20o%20seu%20comprovante%20de%20pagamento.%20%28Pressione%20'Colar'%20aqui%20na%20mensagem%20para%20receber%20a%20imagem%29%20%F0%9F%8F%8A%E2%80%8D%E2%99%82%EF%B8%8F%F0%9F%92%A6", "_blank");
+                                btn.innerHTML = textoOriginal;
+                            }}, 1500);
+                        }}).catch(err => {{
+                            alert("Seu navegador não permitiu copiar automático. Clique no botão de Baixar.");
+                            btn.innerHTML = textoOriginal;
+                        }});
+                    }} catch(e) {{
+                        alert("Seu navegador não suporta cópia direta. Clique em Baixar Imagem.");
+                        btn.innerHTML = textoOriginal;
+                    }}
+                }});
+            }});
+        }}
+
+        function baixar() {{
+            html2canvas(document.querySelector("#recibo"), {{scale: 3}}).then(canvas => {{
+                var link = document.createElement('a');
+                link.download = 'Recibo_{nome_aluno.replace(" ", "_")}.png';
+                link.href = canvas.toDataURL("image/png");
+                link.click();
+            }});
+        }}
+    </script>
+    </body>
+    </html>
+    """
     
-    # Botões de Ação
-    col1, col2 = st.columns(2)
-    with col1:
-        st.download_button(
-            label="⬇️ Baixar Imagem (Alta Qualidade)",
-            data=img_bytes,
-            file_name=f"Recibo_PingoDagua_{nome_aluno}_{data_hoje.replace('/', '-')}.png",
-            mime="image/png",
-            use_container_width=True
-        )
-        
-    with col2:
-        msg_foto = urllib.parse.quote("Olá! Tudo bem? Segue o seu comprovante de pagamento. Muito obrigado! 🏊‍♂️💦")
-        link_wpp_foto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={msg_foto}"
-        st.link_button("💬 Abrir WhatsApp (Para enviar a foto)", link_wpp_foto, use_container_width=True)
+    # Renderiza tudo na tela perfeitamente
+    components.html(html_code, height=650)
 
 # -------------------------------------------------------------------
 # 2. MARCA D'ÁGUA DE FUNDO
