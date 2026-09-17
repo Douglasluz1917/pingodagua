@@ -10,62 +10,104 @@ import streamlit.components.v1 as components
 
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
+from PIL import Image, ImageDraw, ImageFont
+import io
+
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Atualizada Profissional)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Download da Imagem)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    st.write("### 1️⃣ Enviar Imagem Linda (Print)")
-    st.write("Tire um **Print (captura de tela)** do recibo abaixo e clique no botão para colar no WhatsApp do aluno:")
+    # === CRIAÇÃO DA IMAGEM DO RECIBO ===
+    # Cria um fundo branco de tamanho fixo
+    largura, altura = 400, 450
+    img_recibo = Image.new('RGB', (largura, altura), color='white')
+    draw = ImageDraw.Draw(img_recibo)
     
-    # Texto rápido só para introduzir a foto que ela vai colar
-    msg_foto = urllib.parse.quote("Olá! Tudo bem? Segue o seu comprovante de pagamento. Muito obrigado! 🏊‍♂️💦")
-    link_wpp_foto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={msg_foto}"
-    st.link_button(f"💬 Abrir WhatsApp de {nome_aluno} (Para colar a foto)", link_wpp_foto, use_container_width=True)
-    
-    # O RECIBO VISUAL PARA TIRAR O PRINT OU IMPRIMIR
-    img_base64 = ""
-    if os.path.exists("logo.png"):
-        with open("logo.png", "rb") as img_file:
-            img_base64 = base64.b64encode(img_file.read()).decode()
-            
-    html_recibo = f"""
-    <div style="font-family: 'Courier New', Courier, monospace; border: 2px dashed #999; padding: 20px; max-width: 350px; margin: auto; background-color: #fff; color: #000; box-shadow: 2px 2px 10px rgba(0,0,0,0.1);">
-        <div style="text-align: center;">
-            <img src="data:image/png;base64,{img_base64}" style="max-height: 50px; margin-bottom: 5px;">
-            <h4 style="margin: 0; color: #333; font-family: Arial, sans-serif;">PINGO D'ÁGUA NATAÇÃO</h4>
-            <hr style="border: 1px dashed #ccc; margin: 10px 0;">
-            <h3 style="margin: 0; font-size: 16px;">RECIBO ELETRÔNICO</h3>
-        </div>
-        <div style="margin-top: 15px; font-size: 14px; line-height: 1.6;">
-            <strong>ALUNO(A):</strong> {nome_aluno}<br>
-            <strong>REFERÊNCIA:</strong> {modalidade}<br>
-            <strong>VALOR:</strong> R$ {valor_pago}<br>
-            <strong>DATA:</strong> {data_hoje}
-        </div>
-        <div style="margin-top: 20px; text-align: center; font-size: 14px; background-color: #e6f9e6; border: 1px solid #b3e6b3; padding: 5px;">
-            <strong>✅ PAGAMENTO CONFIRMADO</strong>
-        </div>
-        <div style="text-align: center; margin-top: 20px;" class="no-print">
-            <button onclick="window.print()" style="padding: 10px 20px; background-color: #005A9C; color: white; border: none; border-radius: 5px; cursor: pointer; font-size: 14px; font-weight: bold;">
-                🖨️ Imprimir
-            </button>
-        </div>
-    </div>
-    """
-    components.html(html_recibo, height=420)
-    
-    st.write("---")
-    st.write("### 2️⃣ Enviar como Texto (Estilo Cupom)")
-    
-    # Novo formato de texto super alinhado (Estilo Maquininha)
-    texto_wpp_cupom = f"=========================\n💦 *PINGO D'ÁGUA NATAÇÃO* \n=========================\n🧾 *RECIBO ELETRÔNICO*\n\n👤 *Aluno:* {nome_aluno}\n🏊‍♂️ *Ref:* {modalidade}\n💰 *Valor:* R$ {valor_pago}\n📅 *Data:* {data_hoje}\n\n✅ *SITUAÇÃO: PAGO*\n=========================\nObrigado pela confiança!"
-    
-    link_wpp_texto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={urllib.parse.quote(texto_wpp_cupom)}"
-    st.link_button("🟢 Enviar Texto Formato Cupom", link_wpp_texto, use_container_width=True)
+    # Tenta usar uma fonte padrão. Se não achar, usa a básica do sistema
+    try:
+        fonte_titulo = ImageFont.truetype("arialbd.ttf", 20)
+        fonte_texto = ImageFont.truetype("arial.ttf", 16)
+        fonte_destaque = ImageFont.truetype("arialbd.ttf", 16)
+    except IOError:
+        fonte_titulo = ImageFont.load_default()
+        fonte_texto = ImageFont.load_default()
+        fonte_destaque = ImageFont.load_default()
 
+    # Tenta colar a Logo no topo
+    y_atual = 20
+    if os.path.exists("logo.png"):
+        try:
+            logo = Image.open("logo.png")
+            # Redimensiona a logo para não ficar gigante
+            logo.thumbnail((150, 150))
+            pos_x = (largura - logo.width) // 2
+            img_recibo.paste(logo, (pos_x, y_atual))
+            y_atual += logo.height + 15
+        except Exception:
+            pass
+
+    # Desenhando o texto no recibo
+    draw.text((largura//2, y_atual), "PINGO D'ÁGUA NATAÇÃO", fill="black", font=fonte_titulo, anchor="mt")
+    y_atual += 30
+    draw.text((largura//2, y_atual), "RECIBO ELETRÔNICO", fill="#005A9C", font=fonte_titulo, anchor="mt")
+    y_atual += 40
+    
+    # Linha separadora
+    draw.line([(30, y_atual), (370, y_atual)], fill="#ccc", width=2)
+    y_atual += 20
+    
+    # Dados do Aluno
+    draw.text((30, y_atual), "ALUNO(A):", fill="#555", font=fonte_texto)
+    draw.text((130, y_atual), nome_aluno, fill="black", font=fonte_destaque)
+    y_atual += 30
+    
+    draw.text((30, y_atual), "REFERÊNCIA:", fill="#555", font=fonte_texto)
+    draw.text((130, y_atual), modalidade, fill="black", font=fonte_destaque)
+    y_atual += 30
+    
+    draw.text((30, y_atual), "VALOR:", fill="#555", font=fonte_texto)
+    draw.text((130, y_atual), f"R$ {valor_pago}", fill="black", font=fonte_destaque)
+    y_atual += 30
+    
+    draw.text((30, y_atual), "DATA:", fill="#555", font=fonte_texto)
+    draw.text((130, y_atual), data_hoje, fill="black", font=fonte_destaque)
+    y_atual += 40
+    
+    # Linha separadora
+    draw.line([(30, y_atual), (370, y_atual)], fill="#ccc", width=2)
+    y_atual += 20
+    
+    draw.text((largura//2, y_atual), "✅ PAGAMENTO CONFIRMADO", fill="green", font=fonte_destaque, anchor="mt")
+
+    # Prepara a imagem para ser baixada pelo Streamlit
+    img_byte_arr = io.BytesIO()
+    img_recibo.save(img_byte_arr, format='PNG')
+    img_bytes = img_byte_arr.getvalue()
+
+    # === FIM DA CRIAÇÃO DA IMAGEM ===
+    
+    # 1. MOSTRAR A IMAGEM NA TELA
+    st.image(img_bytes, caption="Visualização do Recibo", use_container_width=True)
+    
+    # 2. O BOTÃO MÁGICO DE DOWNLOAD
+    col1, col2 = st.columns(2)
+    with col1:
+        st.download_button(
+            label="⬇️ Baixar Imagem",
+            data=img_bytes,
+            file_name=f"Recibo_PingoDagua_{nome_aluno}_{data_hoje.replace('/', '-')}.png",
+            mime="image/png",
+            use_container_width=True
+        )
+        
+    # 3. O BOTÃO DO WHATSAPP (Abre o Zap com texto amigável, pronto para ela anexar a foto)
+    with col2:
+        msg_foto = urllib.parse.quote("Olá! Tudo bem? Segue o seu comprovante de pagamento. Muito obrigado! 🏊‍♂️💦")
+        link_wpp_foto = f"https://wa.me/55{str(telefone).replace(' ', '')}?text={msg_foto}"
+        st.link_button("💬 Abrir WhatsApp", link_wpp_foto, use_container_width=True)
 # -------------------------------------------------------------------
 # 2. MARCA D'ÁGUA DE FUNDO (logo.png)
 # -------------------------------------------------------------------
