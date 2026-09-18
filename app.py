@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Texto Profissional Corrigido)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
@@ -35,7 +35,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: white; margin: 0; padding: 15px; }}
             
-            /* --- RECIBO DIGITAL (TELA E WHATSAPP) --- */
             #recibo-digital {{
                 border: 2px dashed #aaa; padding: 25px; width: 320px; background: #fff;
                 color: #222; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
@@ -50,7 +49,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
-            /* --- RECIBO IMPRESSO (OCULTO NA TELA) --- */
             #recibo-impresso {{ display: none; }} 
             
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
@@ -59,9 +57,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
             .btn-down:hover {{ background-color: #e2e6ea; }}
             
-            /* --- MÁGICA DA IMPRESSORA (TEXTO CORRIDO E ESTRUTURADO) --- */
             @media print {{
-                /* Esconde tudo, exceto o recibo impresso */
                 body > *:not(#recibo-impresso) {{ display: none !important; }} 
                 
                 #recibo-impresso {{
@@ -70,7 +66,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
                     justify-content: space-between;
                     position: absolute; left: 0; top: 0;
                     width: 100%; 
-                    height: 140mm; /* Metade da folha A4 */
+                    height: 140mm; 
                     font-family: 'Times New Roman', Times, serif;
                     color: black;
                     padding: 10mm 15mm;
@@ -86,7 +82,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
                 .print-valor h2 {{ margin: 0; font-size: 20px; font-weight: normal; text-transform: uppercase; }}
                 .print-valor h3 {{ margin: 5px 0 0 0; font-size: 24px; }}
                 
-                /* Texto corrido profissional */
                 .print-body {{ font-size: 18px; line-height: 1.6; text-align: justify; margin-top: 25px; }}
                 
                 .print-footer {{ text-align: center; margin-top: auto; }}
@@ -99,7 +94,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     </head>
     <body>
 
-    <!-- RECIBO DIGITAL -->
     <div id="recibo-digital">
         <div class="cabecalho">
             <img src="data:image/png;base64,{img_base64}" alt="Logo">
@@ -115,7 +109,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
     </div>
 
-    <!-- RECIBO IMPRESSO (CORRIGIDO) -->
     <div id="recibo-impresso">
         <div class="print-header">
             <div style="width: 25%;"><img src="data:image/png;base64,{img_base64}" class="print-logo"></div>
@@ -274,10 +267,14 @@ if not st.session_state["logado"]:
     st.stop() 
 
 # -------------------------------------------------------------------
-# MEMÓRIA ANTI-CLIQUE DUPLO E DATAS
+# MEMÓRIA ANTI-CLIQUE DUPLO, DATAS E LIMPEZA DE TELA
 # -------------------------------------------------------------------
 if "transacoes_feitas" not in st.session_state:
     st.session_state["transacoes_feitas"] = set()
+
+# NOVIDADE: A memória que vai guardar os recibos ocultos
+if "recibos_ocultos" not in st.session_state:
+    st.session_state["recibos_ocultos"] = set()
 
 hoje = datetime.now().date()
 
@@ -529,12 +526,18 @@ with aba1:
                 )
         
         else:
-            col_aviso, col_recibo = st.columns([3, 1])
-            with col_aviso:
-                st.success(f"✅ {row['Nome do Aluno']} está com o pagamento em dia!")
-            with col_recibo:
-                if st.button(f"🧾 Ver Recibo", key=f"btn_recibo_{index}_{id_cobranca}", use_container_width=True):
-                    abrir_janela_recibo(row['Nome do Aluno'], row['Modalidade'], valor_formatado_br, row['Telefone'])
+            # NOVIDADE: Só mostra se a dona não tiver clicado em "Ocultar"
+            if id_cobranca not in st.session_state["recibos_ocultos"]:
+                col_aviso, col_recibo, col_ocultar = st.columns([2, 1, 1])
+                with col_aviso:
+                    st.success(f"✅ {row['Nome do Aluno']} está com o pagamento em dia!")
+                with col_recibo:
+                    if st.button(f"🧾 Ver Recibo", key=f"btn_recibo_{index}_{id_cobranca}", use_container_width=True):
+                        abrir_janela_recibo(row['Nome do Aluno'], row['Modalidade'], valor_formatado_br, row['Telefone'])
+                with col_ocultar:
+                    if st.button("🧹 Ocultar da Tela", key=f"btn_ocultar_{index}_{id_cobranca}", use_container_width=True):
+                        st.session_state["recibos_ocultos"].add(id_cobranca)
+                        st.rerun()
                     
     st.write("---")
     st.subheader("📊 Gráfico: Aulas Mais Procuradas")
