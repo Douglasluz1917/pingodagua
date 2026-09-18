@@ -70,6 +70,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
                 .print-footer {{ text-align: center; margin-top: auto; }}
                 .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 35px auto 5px auto; }}
                 .print-footer p {{ margin: 3px 0; font-size: 16px; }}
+                .print-tesoura {{ border-top: 1px dashed #666; text-align: center; color: #666; padding-top: 5px; font-family: Arial, sans-serif; font-size: 12px; margin-top: 15px; }}
             }}
         </style>
     </head>
@@ -97,6 +98,9 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="print-footer">
             <p>Jaboatão dos Guararapes, {data_hoje}</p><div class="print-linha-ass"></div>
             <p><strong>Assinatura do Responsável</strong></p><p>Pingo D'água Natação</p>
+        </div>
+        <div class="print-tesoura">
+            ✂️ ---------------------------- Corte aqui para reaproveitar o papel ---------------------------- ✂️
         </div>
     </div>
     <button class="btn btn-zap" onclick="copiarEEnviar()">💬 Copiar e Abrir WhatsApp</button>
@@ -158,15 +162,20 @@ if not st.session_state["logado"]:
     st.stop() 
 
 # -------------------------------------------------------------------
-# 4. CARREGAMENTO DE DADOS (PREÇOS, TURMAS E ALUNOS)
+# 4. CARREGAMENTO DE DADOS E MEMÓRIA
 # -------------------------------------------------------------------
+if "transacoes_feitas" not in st.session_state: st.session_state["transacoes_feitas"] = set()
+if "pagamentos_recentes" not in st.session_state: st.session_state["pagamentos_recentes"] = set()
+if "recibos_ocultos" not in st.session_state: st.session_state["recibos_ocultos"] = set()
+
+hoje = datetime.now().date()
+
 arquivo_precos = "banco_precos.csv"
 if not os.path.exists(arquivo_precos):
     pd.DataFrame({"Modalidade": ["Natação Infantil", "Natação Adulto", "Hidroginástica"], "Valor (R$)": [79.99, 79.99, 70.99]}).to_csv(arquivo_precos, index=False)
 df_precos = pd.read_csv(arquivo_precos)
 TABELA_PRECOS = dict(zip(df_precos["Modalidade"], df_precos["Valor (R$)"]))
 
-# NOVIDADE: Banco de Turmas
 arquivo_turmas = "banco_turmas.csv"
 if not os.path.exists(arquivo_turmas):
     pd.DataFrame({
@@ -190,14 +199,13 @@ if not os.path.exists(arquivo_historico):
     pd.DataFrame(columns=["Data do Pagamento", "Aluno", "Modalidade", "Valor Recebido (R$)"]).to_csv(arquivo_historico, index=False)
 
 df = pd.read_csv(arquivo_dados, dtype={"Telefone": str})
-if "Turma" not in df.columns: df["Turma"] = "Sem Turma" # Garante compatibilidade com versão antiga
+if "Turma" not in df.columns: df["Turma"] = "Sem Turma"
 if "Matrícula" not in df.columns: df["Matrícula"] = "Ativo"
 df["Data de Nascimento"] = pd.to_datetime(df["Data de Nascimento"], errors='coerce').dt.date
 df["Data de Vencimento"] = pd.to_datetime(df["Data de Vencimento"], errors='coerce').dt.date
 if "Ano_Ultimo_Parabens" not in df.columns: df["Ano_Ultimo_Parabens"] = 0
 df["Mensalidade (R$)"] = df["Modalidade"].map(TABELA_PRECOS).fillna(0.0)
 
-hoje = datetime.now().date()
 def calcular_status(data_vencimento):
     if pd.isna(data_vencimento): return "Em dia" 
     dias = (data_vencimento - hoje).days
@@ -205,11 +213,6 @@ def calcular_status(data_vencimento):
     elif 0 <= dias <= 5: return "Perto de vencer"
     else: return "Em dia"
 df["Status"] = df["Data de Vencimento"].apply(calcular_status)
-
-# Variáveis de sessão para UX
-if "transacoes_feitas" not in st.session_state: st.session_state["transacoes_feitas"] = set()
-if "pagamentos_recentes" not in st.session_state: st.session_state["pagamentos_recentes"] = set()
-if "recibos_ocultos" not in st.session_state: st.session_state["recibos_ocultos"] = set()
 
 def processar_pagamento(index_aluno, nome_aluno, modalidade_aluno, data_venc_atual, valor_pago):
     id_cob = f"{nome_aluno}_{data_venc_atual}"
@@ -236,7 +239,7 @@ with st.sidebar:
     if st.button("🚪 Sair do Sistema"): st.session_state["logado"] = False; st.rerun()
 
 # -------------------------------------------------------------------
-# 5. ESTRUTURA DE ABAS (AGORA SÃO 4 ABAS)
+# 5. ESTRUTURA DE ABAS 
 # -------------------------------------------------------------------
 aba1, aba2, aba3, aba4 = st.tabs(["🏊‍♂️ Gestão de Alunos", "💰 Histórico de Caixa", "📅 Grade de Aulas", "⚙️ Configurações"])
 
@@ -252,7 +255,6 @@ with aba1:
     st.write("---")
     st.subheader("📝 Painel de Cadastro e Edição")
     
-    # Adicionamos a coluna Turma para ela escolher
     colunas_config = {
         "Status": st.column_config.TextColumn("Status", disabled=True),
         "Mensalidade (R$)": st.column_config.NumberColumn("Mensalidade (R$)", format="R$ %.2f", disabled=True),
@@ -287,6 +289,7 @@ with aba1:
     df_visualizacao["Prioridade"] = df_visualizacao["Status"].map({"Atrasado": 1, "Perto de vencer": 2, "Em dia": 3})
     df_visualizacao = df_visualizacao.sort_values(by="Prioridade").drop(columns=["Prioridade", "Ano_Ultimo_Parabens"])
 
+    # CORREÇÃO DEFINITIVA DO ERRO DE COR DA TABELA ESTÁ AQUI:
     def colorir_linhas(row):
         cores = {'Em dia': '#c3e6cb', 'Atrasado': '#f5c6cb', 'Perto de vencer': '#ffeeba'}
         cor_fundo = cores.get(row['Status'], 'white')
@@ -300,13 +303,8 @@ with aba1:
             "Data de Nascimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else "",
             "Data de Vencimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else ""
         }), 
-        use_container_width=True, 
-        hide_index=True
+        use_container_width=True, hide_index=True
     )
-
-    st.dataframe(df_visualizacao.style.apply(lambda row: [{'Em dia': '#c3e6cb', 'Atrasado': '#f5c6cb', 'Perto de vencer': '#ffeeba'}.get(row['Status'], 'white')] * len(row) , axis=1)
-                 .format({"Mensalidade (R$)": lambda x: f"R$ {x:.2f}".replace(".", ",") if pd.notnull(x) else "R$ 0,00", "Data de Nascimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else "", "Data de Vencimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else ""}), 
-                 use_container_width=True, hide_index=True)
 
     for index, row in df_visualizacao.iterrows():
         id_cob = f"{row['Nome do Aluno']}_{row['Data de Vencimento']}"
@@ -335,72 +333,55 @@ with aba2:
     if not df_historico.empty:
         st.dataframe(df_historico.style.format({"Valor Recebido (R$)": lambda x: f"R$ {x:.2f}".replace(".", ",")}), use_container_width=True, hide_index=True)
 
-# -------------------------------------------------------------------
-# A NOVIDADE: ABA 3 - GRADE DE AULAS (O Controle de Turmas)
-# -------------------------------------------------------------------
 with aba3:
     st.header("📅 Grade de Aulas e Lotação")
-    st.write("Acompanhe em tempo real a quantidade de alunos em cada horário para não ultrapassar o limite das piscinas.")
+    st.write("Acompanhe em tempo real a quantidade de alunos em cada horário.")
     
     df_ativos_aba3 = df[df["Matrícula"] == "Ativo"]
     
     if df_turmas.empty:
         st.info("Você ainda não cadastrou nenhuma turma. Vá na aba de 'Configurações' para criar os horários.")
     else:
-        # Cria colunas lado a lado para os cartões
         colunas_grade = st.columns(3)
-        
         for index, row in df_turmas.iterrows():
             nome_turma = row["Nome da Turma"]
             cap_max = int(row["Capacidade Máxima"])
             
-            # Conta quantos alunos estão nessa turma específica
             alunos_na_turma = df_ativos_aba3[df_ativos_aba3["Turma"] == nome_turma]
             qtd_atual = len(alunos_na_turma)
             
             vagas_livres = cap_max - qtd_atual
             
-            # Lógica das cores do Semáforo
             if vagas_livres > 2: cor, status = "🟢", f"{vagas_livres} vagas livres"
             elif vagas_livres > 0: cor, status = "🟡", f"Atenção: Só {vagas_livres} vagas"
             else: cor, status = "🔴", "TURMA LOTADA"
             
-            # Desenha o "Cartão" na tela
             with colunas_grade[index % 3]:
                 with st.container(border=True):
                     st.subheader(f"{cor} {nome_turma}")
                     st.write(f"**Ocupação:** {qtd_atual} / {cap_max} alunos")
                     st.write(f"**Status:** {status}")
                     
-                    # Barra de Progresso nativa do Streamlit
                     percentual = min(qtd_atual / cap_max, 1.0) if cap_max > 0 else 1.0
                     st.progress(percentual)
                     
-                    # Lista Sanfona (Expander) com os nomes dos alunos
                     with st.expander("Ver lista de alunos"):
                         if qtd_atual > 0:
-                            for aluno in alunos_na_turma["Nome do Aluno"].tolist():
-                                st.write(f"👤 {aluno}")
+                            for aluno in alunos_na_turma["Nome do Aluno"].tolist(): st.write(f"👤 {aluno}")
                         else:
                             st.write("Nenhum aluno cadastrado.")
 
 with aba4:
     st.header("⚙️ Configurações do Sistema")
     
-    # ---------------------------------------------------------
-    # NOVA CONFIGURAÇÃO DE TURMAS
-    # ---------------------------------------------------------
     st.subheader("📅 Cadastro de Turmas e Horários")
-    st.write("Crie os horários de segunda a sexta e defina o limite máximo de alunos.")
     colunas_turma_conf = {
-        "Nome da Turma": st.column_config.TextColumn("Nome da Turma (Ex: Seg/Qua/Sex - 09h)"),
+        "Nome da Turma": st.column_config.TextColumn("Nome da Turma"),
         "Capacidade Máxima": st.column_config.NumberColumn("Capacidade Máxima", min_value=1, step=1)
     }
     df_turmas_editado = st.data_editor(df_turmas, num_rows="dynamic", column_config=colunas_turma_conf, use_container_width=True, hide_index=True, key="tab_turmas")
     if st.button("💾 Salvar Grade de Horários", use_container_width=True):
-        df_turmas_editado.to_csv(arquivo_turmas, index=False)
-        st.success("Horários atualizados! O sistema vai reiniciar para aplicar as mudanças nas listas.")
-        st.rerun()
+        df_turmas_editado.to_csv(arquivo_turmas, index=False); st.success("Atualizado!"); st.rerun()
     st.write("---")
     
     st.subheader("🏊‍♂️ Tabela de Preços")
