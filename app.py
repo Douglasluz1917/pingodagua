@@ -11,13 +11,12 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Dois Layouts Separados)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Meia Folha A4 Exata)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
-    # TRAVA DE SEGURANÇA: Garante que o nome seja um texto válido
     nome_seguro = str(nome_aluno) if pd.notna(nome_aluno) else "Aluno_Desconhecido"
     
     img_base64 = ""
@@ -51,7 +50,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
-            /* --- 2. ESTILO DO RECIBO IMPRESSO (FORMAL E OCULTO NA TELA) --- */
+            /* --- 2. ESTILO DO RECIBO IMPRESSO (OCULTO NA TELA) --- */
             #recibo-impresso {{ display: none; }} 
             
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
@@ -60,7 +59,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
             .btn-down:hover {{ background-color: #e2e6ea; }}
             
-            /* --- 3. MÁGICA DA IMPRESSORA --- */
+            /* --- 3. MÁGICA DA IMPRESSORA (MEIA FOLHA) --- */
             @media print {{
                 body * {{ visibility: hidden; display: none !important; }} 
                 
@@ -72,17 +71,29 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
                 #recibo-impresso {{
                     position: absolute; left: 0; top: 0;
                     width: 100%; 
+                    height: 140mm; /* METADE EXATA DA FOLHA A4 */
                     font-family: 'Times New Roman', Times, serif;
                     color: black;
-                    padding: 30px;
+                    padding: 10mm 15mm;
+                    box-sizing: border-box;
                 }}
                 
-                .print-table {{ width: 100%; border-bottom: 2px solid black; padding-bottom: 20px; margin-bottom: 30px; }}
-                .print-logo {{ max-height: 90px; }}
-                .print-texto-formal {{ font-size: 20px; line-height: 2.0; text-align: justify; margin-bottom: 20px; }}
-                .print-assinatura {{ text-align: center; margin-top: 80px; font-size: 18px; }}
-                .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 40px auto 10px auto; }}
-                .print-tesoura {{ margin-top: 60px; border-top: 1px dashed #666; text-align: center; color: #666; padding-top: 10px; font-family: Arial, sans-serif; font-size: 14px; }}
+                .print-table {{ width: 100%; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; }}
+                .print-table td {{ display: table-cell !important; vertical-align: middle; }}
+                .print-logo {{ max-height: 65px; }}
+                .print-texto-formal {{ font-size: 16px; line-height: 1.5; text-align: justify; margin-bottom: 10px; }}
+                .print-assinatura {{ text-align: center; margin-top: 25px; font-size: 15px; }}
+                .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 25px auto 5px auto; }}
+                
+                .print-tesoura {{ 
+                    position: absolute; 
+                    bottom: 0; left: 0; width: 100%; 
+                    border-top: 1px dashed #666; 
+                    text-align: center; color: #666; 
+                    padding-top: 5px; 
+                    font-family: Arial, sans-serif; 
+                    font-size: 12px; 
+                }}
             }}
         </style>
     </head>
@@ -104,19 +115,19 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
     </div>
 
-    <!-- RECIBO IMPRESSO -->
+    <!-- RECIBO IMPRESSO (COMPACTADO PARA MEIA FOLHA) -->
     <div id="recibo-impresso">
         <table class="print-table">
             <tr>
                 <td style="width: 25%;"><img src="data:image/png;base64,{img_base64}" class="print-logo"></td>
-                <td style="width: 50%; vertical-align: middle;">
-                    <h2 style="margin: 0; font-size: 24px;">PINGO D'ÁGUA NATAÇÃO</h2>
-                    <p style="margin: 5px 0 0 0; font-size: 16px;">CNPJ: 00.000.000/0001-00</p>
-                    <p style="margin: 5px 0 0 0; font-size: 16px;">Jaboatão dos Guararapes - PE</p>
+                <td style="width: 50%;">
+                    <h2 style="margin: 0; font-size: 20px;">PINGO D'ÁGUA NATAÇÃO</h2>
+                    <p style="margin: 3px 0 0 0; font-size: 14px;">CNPJ: 00.000.000/0001-00</p>
+                    <p style="margin: 3px 0 0 0; font-size: 14px;">Jaboatão dos Guararapes - PE</p>
                 </td>
-                <td style="width: 25%; text-align: right; vertical-align: middle;">
-                    <h2 style="margin: 0; font-size: 28px; font-weight: normal;">RECIBO</h2>
-                    <h3 style="margin: 10px 0 0 0; font-size: 26px;">R$ {valor_pago}</h3>
+                <td style="width: 25%; text-align: right;">
+                    <h2 style="margin: 0; font-size: 22px; font-weight: normal;">RECIBO</h2>
+                    <h3 style="margin: 5px 0 0 0; font-size: 22px;">R$ {valor_pago}</h3>
                 </td>
             </tr>
         </table>
@@ -131,14 +142,14 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         </div>
         
         <div class="print-assinatura">
-            <p>Jaboatão dos Guararapes, {data_hoje}</p>
+            <p style="margin: 0;">Jaboatão dos Guararapes, {data_hoje}</p>
             <div class="print-linha-ass"></div>
             <p style="margin: 0;"><strong>Assinatura do Responsável</strong></p>
-            <p style="margin: 5px 0 0 0;">Pingo D'água Natação</p>
+            <p style="margin: 3px 0 0 0;">Pingo D'água Natação</p>
         </div>
         
         <div class="print-tesoura">
-            ✂️ ------------------------------------ Corte aqui ------------------------------------ ✂️
+            ✂️ ---------------------------- Corte aqui para reaproveitar o papel ---------------------------- ✂️
         </div>
     </div>
 
