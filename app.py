@@ -254,9 +254,6 @@ with aba1:
     
     st.write("---")
     
-    # ---------------------------------------------------------
-    # NOVIDADE: FORMULÁRIO DE MATRÍCULA INTELIGENTE
-    # ---------------------------------------------------------
     st.subheader("➕ Matricular Novo Aluno")
     with st.container(border=True):
         c1, c2 = st.columns([2, 1])
@@ -266,7 +263,6 @@ with aba1:
         c3, c4, c5, c6 = st.columns(4)
         novo_mod = c3.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
         
-        # O Pulo do Gato: Filtra as turmas dinamicamente com base na modalidade escolhida
         turmas_da_mod = df_turmas[df_turmas["Nome da Turma"].str.startswith(novo_mod, na=False)]["Nome da Turma"].tolist()
         nova_turma = c4.selectbox("Turma / Horário (Filtro Automático)", ["Sem Turma"] + turmas_da_mod)
         
@@ -278,15 +274,9 @@ with aba1:
                 st.error("⚠️ Preencha o nome do aluno!")
             else:
                 novo_aluno = pd.DataFrame([{
-                    "Nome do Aluno": novo_nome,
-                    "Matrícula": "Ativo",
-                    "Data de Nascimento": novo_nasc.strftime("%Y-%m-%d"),
-                    "Modalidade": novo_mod,
-                    "Turma": nova_turma,
-                    "Telefone": novo_tel,
-                    "Data de Vencimento": novo_venc.strftime("%Y-%m-%d"),
-                    "Status": "Em dia",
-                    "Ano_Ultimo_Parabens": 0
+                    "Nome do Aluno": novo_nome, "Matrícula": "Ativo", "Data de Nascimento": novo_nasc.strftime("%Y-%m-%d"),
+                    "Modalidade": novo_mod, "Turma": nova_turma, "Telefone": novo_tel,
+                    "Data de Vencimento": novo_venc.strftime("%Y-%m-%d"), "Status": "Em dia", "Ano_Ultimo_Parabens": 0
                 }])
                 df_atualizado = pd.concat([df, novo_aluno], ignore_index=True)
                 df_atualizado.to_csv(arquivo_dados, index=False)
@@ -442,13 +432,29 @@ with aba4:
         st.write("**➕ Criar Nova Turma**")
         with st.form("form_criar_turma"):
             c1, c2, c3, c4 = st.columns(4)
-            with c1: f_mod = st.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
-            with c2: f_dias = st.selectbox("Dias da Aula", ["Seg/Qua/Sex", "Ter/Qui", "Seg a Sex", "Sábado", "Domingo", "Livre"])
-            with c3: f_hora = st.time_input("Horário", value=datetime.strptime("08:00", "%H:%M").time())
-            with c4: f_cap = st.number_input("Capacidade", min_value=1, max_value=100, value=10)
+            with c1: 
+                f_mod = st.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
+            with c2: 
+                # NOVIDADE: MÚLTIPLA ESCOLHA DOS DIAS DA SEMANA
+                f_dias_lista = st.multiselect(
+                    "Dias da Aula", 
+                    ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
+                    default=["Seg", "Qua"]
+                )
+            with c3: 
+                f_hora = st.time_input("Horário", value=datetime.strptime("08:00", "%H:%M").time())
+            with c4: 
+                f_cap = st.number_input("Capacidade", min_value=1, max_value=100, value=10)
                 
             if st.form_submit_button("✅ Adicionar à Grade", use_container_width=True):
-                nome_final = f"{f_mod} ({f_dias} às {f_hora.strftime('%H:%M')})"
+                # Junta os dias separados por barra, ex: Seg/Ter/Sex
+                if len(f_dias_lista) > 0:
+                    str_dias = "/".join(f_dias_lista)
+                else:
+                    str_dias = "Dias Indefinidos"
+                    
+                nome_final = f"{f_mod} ({str_dias} às {f_hora.strftime('%H:%M')})"
+                
                 if nome_final in df_turmas["Nome da Turma"].values:
                     st.error(f"⚠️ A turma '{nome_final}' já existe!")
                 else:
