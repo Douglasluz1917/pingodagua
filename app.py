@@ -287,6 +287,23 @@ with aba1:
     df_visualizacao["Prioridade"] = df_visualizacao["Status"].map({"Atrasado": 1, "Perto de vencer": 2, "Em dia": 3})
     df_visualizacao = df_visualizacao.sort_values(by="Prioridade").drop(columns=["Prioridade", "Ano_Ultimo_Parabens"])
 
+    def colorir_linhas(row):
+        cores = {'Em dia': '#c3e6cb', 'Atrasado': '#f5c6cb', 'Perto de vencer': '#ffeeba'}
+        cor_fundo = cores.get(row['Status'], 'white')
+        return [f"background-color: {cor_fundo}; color: black"] * len(row)
+
+    st.dataframe(
+        df_visualizacao.style
+        .apply(colorir_linhas, axis=1)
+        .format({
+            "Mensalidade (R$)": lambda x: f"R$ {x:.2f}".replace(".", ",") if pd.notnull(x) else "R$ 0,00",
+            "Data de Nascimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else "",
+            "Data de Vencimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else ""
+        }), 
+        use_container_width=True, 
+        hide_index=True
+    )
+
     st.dataframe(df_visualizacao.style.apply(lambda row: [{'Em dia': '#c3e6cb', 'Atrasado': '#f5c6cb', 'Perto de vencer': '#ffeeba'}.get(row['Status'], 'white')] * len(row) , axis=1)
                  .format({"Mensalidade (R$)": lambda x: f"R$ {x:.2f}".replace(".", ",") if pd.notnull(x) else "R$ 0,00", "Data de Nascimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else "", "Data de Vencimento": lambda x: x.strftime("%d/%m/%Y") if pd.notnull(x) else ""}), 
                  use_container_width=True, hide_index=True)
