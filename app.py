@@ -267,12 +267,15 @@ if not st.session_state["logado"]:
     st.stop() 
 
 # -------------------------------------------------------------------
-# MEMÓRIA ANTI-CLIQUE DUPLO, DATAS E LIMPEZA DE TELA
+# MEMÓRIAS DO SISTEMA (Anti-Clique Duplo e Limpeza de Tela)
 # -------------------------------------------------------------------
 if "transacoes_feitas" not in st.session_state:
     st.session_state["transacoes_feitas"] = set()
 
-# NOVIDADE: A memória que vai guardar os recibos ocultos
+# NOVIDADE: Memória de quem pagou HOJE e quem ela já ocultou da tela
+if "pagamentos_recentes" not in st.session_state:
+    st.session_state["pagamentos_recentes"] = set()
+    
 if "recibos_ocultos" not in st.session_state:
     st.session_state["recibos_ocultos"] = set()
 
@@ -327,6 +330,9 @@ def processar_pagamento(index_aluno, nome_aluno, modalidade_aluno, data_venc_atu
         return
         
     st.session_state["transacoes_feitas"].add(id_cobranca)
+    
+    # Registra que esse aluno acabou de pagar nesta sessão
+    st.session_state["pagamentos_recentes"].add(nome_aluno)
     
     df_hist = pd.read_csv(arquivo_historico)
     novo_pagamento = pd.DataFrame([{
@@ -496,6 +502,7 @@ with aba1:
         valor_base = row['Mensalidade (R$)']
         valor_formatado_br = f"{valor_base:.2f}".replace(".", ",")
         
+        # Se estiver atrasado, mostra os botões de cobrança e o confirmar pagamento
         if row["Status"] in ["Atrasado", "Perto de vencer"] and id_cobranca not in st.session_state["transacoes_feitas"]:
             col_wpp, col_pago = st.columns([3, 1])
             
@@ -525,19 +532,25 @@ with aba1:
                     use_container_width=True
                 )
         
+        # Se já estiver "Em dia"
         else:
-            # NOVIDADE: Só mostra se a dona não tiver clicado em "Ocultar"
-            if id_cobranca not in st.session_state["recibos_ocultos"]:
+            # CENÁRIO 1: Acabou de pagar HOJE e ainda não foi ocultado
+            if row['Nome do Aluno'] in st.session_state["pagamentos_recentes"] and row['Nome do Aluno'] not in st.session_state["recibos_ocultos"]:
                 col_aviso, col_recibo, col_ocultar = st.columns([2, 1, 1])
                 with col_aviso:
-                    st.success(f"✅ {row['Nome do Aluno']} está com o pagamento em dia!")
+                    st.success(f"✅ Pagamento de {row['Nome do Aluno']} confirmado!")
                 with col_recibo:
-                    if st.button(f"🧾 Ver Recibo", key=f"btn_recibo_{index}_{id_cobranca}", use_container_width=True):
+                    if st.button(f"🧾 Emitir Recibo", key=f"btn_recibo_{index}", use_container_width=True):
                         abrir_janela_recibo(row['Nome do Aluno'], row['Modalidade'], valor_formatado_br, row['Telefone'])
                 with col_ocultar:
-                    if st.button("🧹 Ocultar da Tela", key=f"btn_ocultar_{index}_{id_cobranca}", use_container_width=True):
-                        st.session_state["recibos_ocultos"].add(id_cobranca)
+                    # Oculta essa linha de recibo e volta a pessoa para o status comum discreto
+                    if st.button("🧹 Concluir", key=f"btn_ocultar_{index}", use_container_width=True):
+                        st.session_state["recibos_ocultos"].add(row['Nome do Aluno'])
                         st.rerun()
+                        
+            # CENÁRIO 2: Já pagou faz dias (já estava em dia quando o sistema abriu) ou já foi ocultado
+            else:
+                st.info(f"✅ A mensalidade de {row['Nome do Aluno']} está em dia.")
                     
     st.write("---")
     st.subheader("📊 Gráfico: Aulas Mais Procuradas")
