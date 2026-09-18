@@ -17,6 +17,9 @@ st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon=
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     data_hoje = datetime.now().strftime("%d/%m/%Y")
     
+    # TRAVA DE SEGURANÇA: Garante que o nome seja um texto válido
+    nome_seguro = str(nome_aluno) if pd.notna(nome_aluno) else "Aluno_Desconhecido"
+    
     img_base64 = ""
     if os.path.exists("logo.png"):
         with open("logo.png", "rb") as img_file:
@@ -49,7 +52,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
             /* --- 2. ESTILO DO RECIBO IMPRESSO (FORMAL E OCULTO NA TELA) --- */
-            #recibo-impresso {{ display: none; }} /* Escondido por padrão */
+            #recibo-impresso {{ display: none; }} 
             
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
             .btn-zap {{ background-color: #25D366; color: white; }}
@@ -59,12 +62,12 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             
             /* --- 3. MÁGICA DA IMPRESSORA --- */
             @media print {{
-                body * {{ visibility: hidden; display: none !important; }} /* Esconde tudo da tela */
+                body * {{ visibility: hidden; display: none !important; }} 
                 
                 #recibo-impresso, #recibo-impresso * {{ 
                     visibility: visible; 
                     display: block !important; 
-                }} /* Mostra só o recibo formal */
+                }} 
                 
                 #recibo-impresso {{
                     position: absolute; left: 0; top: 0;
@@ -85,9 +88,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
     </head>
     <body>
 
-    <!-- ========================================== -->
-    <!-- RECIBO DIGITAL (PARA A TELA E WHATSAPP)    -->
-    <!-- ========================================== -->
+    <!-- RECIBO DIGITAL -->
     <div id="recibo-digital">
         <div class="cabecalho">
             <img src="data:image/png;base64,{img_base64}" alt="Logo">
@@ -95,7 +96,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             <p>RECIBO DIGITAL</p>
         </div>
         <div class="divisor"></div>
-        <div class="linha"><strong>ALUNO(A):</strong><span>{nome_aluno}</span></div>
+        <div class="linha"><strong>ALUNO(A):</strong><span>{nome_seguro}</span></div>
         <div class="linha"><strong>REFERÊNCIA:</strong><span>{modalidade}</span></div>
         <div class="linha"><strong>VALOR:</strong><span>R$ {valor_pago}</span></div>
         <div class="linha"><strong>DATA:</strong><span>{data_hoje}</span></div>
@@ -103,9 +104,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
     </div>
 
-    <!-- ========================================== -->
-    <!-- RECIBO IMPRESSO (FORMAL E ELEGANTE)        -->
-    <!-- ========================================== -->
+    <!-- RECIBO IMPRESSO -->
     <div id="recibo-impresso">
         <table class="print-table">
             <tr>
@@ -123,7 +122,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         </table>
         
         <div class="print-texto-formal">
-            Recebemos de <strong>{nome_aluno}</strong>, a quantia de <strong>R$ {valor_pago}</strong>, 
+            Recebemos de <strong>{nome_seguro}</strong>, a quantia de <strong>R$ {valor_pago}</strong>, 
             referente ao pagamento da mensalidade de <strong>{modalidade}</strong>.
         </div>
         
@@ -143,7 +142,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         </div>
     </div>
 
-    <!-- BOTÕES DE AÇÃO -->
     <button class="btn btn-zap" onclick="copiarEEnviar()">💬 Copiar e Abrir WhatsApp</button>
     <button class="btn btn-down" onclick="window.print()">🖨️ Imprimir Recibo Formal</button>
     <button class="btn btn-down" onclick="baixar()">⬇️ Baixar Imagem Digital</button>
@@ -154,7 +152,6 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             var textoOriginal = btn.innerHTML;
             btn.innerHTML = "⏳ Copiando para memória...";
             
-            // Ele tira foto apenas do recibo digital
             html2canvas(document.querySelector("#recibo-digital"), {{scale: 3}}).then(canvas => {{
                 canvas.toBlob(blob => {{
                     try {{
@@ -180,7 +177,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         function baixar() {{
             html2canvas(document.querySelector("#recibo-digital"), {{scale: 3}}).then(canvas => {{
                 var link = document.createElement('a');
-                link.download = 'Recibo_{nome_aluno.replace(" ", "_")}.png';
+                link.download = 'Recibo_{nome_seguro.replace(" ", "_")}.png';
                 link.href = canvas.toDataURL("image/png");
                 link.click();
             }});
