@@ -183,7 +183,7 @@ if not os.path.exists(arquivo_turmas):
         "Capacidade Máxima": [10, 15]
     }).to_csv(arquivo_turmas, index=False)
 df_turmas = pd.read_csv(arquivo_turmas)
-lista_turmas = ["Sem Turma"] + df_turmas["Nome da Turma"].tolist()
+lista_turmas = ["Sem Turma"] + sorted(df_turmas["Nome da Turma"].tolist())
 
 arquivo_dados = "banco_alunos.csv"
 arquivo_historico = "historico_caixa.csv"
@@ -253,7 +253,50 @@ with aba1:
     col3.metric("🔴 Valor em Atraso Base", f"R$ {df_ativos[df_ativos['Status'] == 'Atrasado']['Mensalidade (R$)'].sum():.2f}".replace(".", ","))
     
     st.write("---")
-    st.subheader("📝 Painel de Cadastro e Edição")
+    
+    # ---------------------------------------------------------
+    # NOVIDADE: FORMULÁRIO DE MATRÍCULA INTELIGENTE
+    # ---------------------------------------------------------
+    st.subheader("➕ Matricular Novo Aluno")
+    with st.container(border=True):
+        c1, c2 = st.columns([2, 1])
+        novo_nome = c1.text_input("Nome Completo do Aluno")
+        novo_tel = c2.text_input("WhatsApp (com DDD)")
+        
+        c3, c4, c5, c6 = st.columns(4)
+        novo_mod = c3.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
+        
+        # O Pulo do Gato: Filtra as turmas dinamicamente com base na modalidade escolhida
+        turmas_da_mod = df_turmas[df_turmas["Nome da Turma"].str.startswith(novo_mod, na=False)]["Nome da Turma"].tolist()
+        nova_turma = c4.selectbox("Turma / Horário (Filtro Automático)", ["Sem Turma"] + turmas_da_mod)
+        
+        novo_nasc = c5.date_input("Data de Nascimento", format="DD/MM/YYYY")
+        novo_venc = c6.date_input("1º Vencimento", format="DD/MM/YYYY")
+        
+        if st.button("✅ Confirmar Matrícula", type="primary", use_container_width=True):
+            if novo_nome.strip() == "":
+                st.error("⚠️ Preencha o nome do aluno!")
+            else:
+                novo_aluno = pd.DataFrame([{
+                    "Nome do Aluno": novo_nome,
+                    "Matrícula": "Ativo",
+                    "Data de Nascimento": novo_nasc.strftime("%Y-%m-%d"),
+                    "Modalidade": novo_mod,
+                    "Turma": nova_turma,
+                    "Telefone": novo_tel,
+                    "Data de Vencimento": novo_venc.strftime("%Y-%m-%d"),
+                    "Status": "Em dia",
+                    "Ano_Ultimo_Parabens": 0
+                }])
+                df_atualizado = pd.concat([df, novo_aluno], ignore_index=True)
+                df_atualizado.to_csv(arquivo_dados, index=False)
+                if "tabela_alunos" in st.session_state: del st.session_state["tabela_alunos"]
+                st.success(f"🎉 Aluno {novo_nome} matriculado com sucesso na turma {nova_turma}!")
+                st.rerun()
+
+    st.write("---")
+    st.subheader("📝 Edição Rápida e Consulta (Todos os Alunos)")
+    st.info("💡 Para adicionar um novo aluno, use o formulário acima. Use esta tabela apenas para ajustes rápidos ou para desativar matrículas.")
     
     colunas_config = {
         "Status": st.column_config.TextColumn("Status", disabled=True),
@@ -332,16 +375,12 @@ with aba2:
     if not df_historico.empty:
         st.dataframe(df_historico.style.format({"Valor Recebido (R$)": lambda x: f"R$ {x:.2f}".replace(".", ",")}), use_container_width=True, hide_index=True)
 
-# -------------------------------------------------------------------
-# ABA 3 TOTALMENTE REFORMULADA: GRADE DE AULAS CATEGORIZADA
-# -------------------------------------------------------------------
 with aba3:
     col_t1, col_t2 = st.columns([2, 1])
     with col_t1:
         st.header("📅 Grade de Aulas e Lotação")
         st.write("Acompanhe a lotação separada por modalidade.")
     with col_t2:
-        # Busca rápida para quando houver muitas turmas
         busca_turma = st.text_input("🔍 Buscar Turma (Ex: Ter/Qui ou 18:00):", "")
     
     df_ativos_aba3 = df[df["Matrícula"] == "Ativo"]
@@ -353,22 +392,19 @@ with aba3:
         if busca_turma:
             turmas_exibidas = turmas_exibidas[turmas_exibidas["Nome da Turma"].str.contains(busca_turma, case=False, na=False)]
             
-        # Agrupa as turmas automaticamente baseadas na Tabela de Preços (Modalidades)
         modalidades_existentes = list(TABELA_PRECOS.keys())
         
         for modalidade in modalidades_existentes:
-            # Pega as turmas que o nome começa com a modalidade
             turmas_da_mod = turmas_exibidas[turmas_exibidas["Nome da Turma"].str.startswith(modalidade, na=False)]
             
             if not turmas_da_mod.empty:
                 st.write("---")
                 st.subheader(f"🏊‍♂️ {modalidade}")
                 
-                colunas_grade = st.columns(3) # Organiza em 3 colunas
+                colunas_grade = st.columns(3)
                 
                 for index, row in turmas_da_mod.reset_index().iterrows():
                     nome_completo = row["Nome da Turma"]
-                    # Tira a palavra da modalidade para o cartão não ficar com texto gigante
                     nome_curto = nome_completo.replace(f"{modalidade} ", "") 
                     cap_max = int(row["Capacidade Máxima"])
                     
@@ -399,9 +435,6 @@ with aba3:
 with aba4:
     st.header("⚙️ Configurações do Sistema")
     
-    # ---------------------------------------------------------
-    # GESTÃO RÁPIDA E EXCLUSÃO INTUITIVA DE TURMAS
-    # ---------------------------------------------------------
     st.subheader("📅 Gestão de Turmas e Horários")
     st.write("Crie novas turmas ou apague as existentes sem complicação.")
     
@@ -428,12 +461,11 @@ with aba4:
     st.write("**📝 Editar ou Apagar Turmas Ativas**")
     st.info("Para **apagar** uma turma, basta marcar a caixinha '🗑️ Excluir' e clicar no botão de Salvar abaixo.")
     
-    # Adicionando a caixinha de excluir de forma limpa
     df_turmas_ui = df_turmas.copy()
     df_turmas_ui["Excluir"] = False 
     
     colunas_turma_conf = {
-        "Nome da Turma": st.column_config.TextColumn("Nome da Turma", disabled=True), # Protege o nome para não quebrar a lógica
+        "Nome da Turma": st.column_config.TextColumn("Nome da Turma", disabled=True), 
         "Capacidade Máxima": st.column_config.NumberColumn("Vagas", min_value=1, step=1),
         "Excluir": st.column_config.CheckboxColumn("🗑️ Excluir?")
     }
@@ -441,11 +473,9 @@ with aba4:
     df_turmas_editado = st.data_editor(df_turmas_ui, num_rows="fixed", column_config=colunas_turma_conf, use_container_width=True, hide_index=True, key="tab_turmas")
     
     if st.button("💾 Salvar Alterações nas Turmas", use_container_width=True):
-        # Filtra mantendo apenas quem NÃO foi marcado para excluir
         df_turmas_salvar = df_turmas_editado[df_turmas_editado["Excluir"] == False].drop(columns=["Excluir"])
         df_turmas_salvar.to_csv(arquivo_turmas, index=False)
         
-        # Se alguma turma foi excluída, avisa e limpa as referências no cadastro de alunos
         if len(df_turmas_salvar) < len(df_turmas_editado):
             turmas_excluidas = set(df_turmas_editado["Nome da Turma"]) - set(df_turmas_salvar["Nome da Turma"])
             for turma_excluida in turmas_excluidas:
