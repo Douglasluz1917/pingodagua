@@ -179,8 +179,8 @@ TABELA_PRECOS = dict(zip(df_precos["Modalidade"], df_precos["Valor (R$)"]))
 arquivo_turmas = "banco_turmas.csv"
 if not os.path.exists(arquivo_turmas):
     pd.DataFrame({
-        "Nome da Turma": ["Seg/Qua/Sex - 08:00 (Infantil)", "Ter/Qui - 19:00 (Adulto)", "Seg a Sex - 07:00 (Hidro)"],
-        "Capacidade Máxima": [10, 15, 20]
+        "Nome da Turma": ["Natação Infantil (Seg/Qua/Sex às 08:00)", "Natação Adulto (Ter/Qui às 19:00)"],
+        "Capacidade Máxima": [10, 15]
     }).to_csv(arquivo_turmas, index=False)
 df_turmas = pd.read_csv(arquivo_turmas)
 lista_turmas = ["Sem Turma"] + df_turmas["Nome da Turma"].tolist()
@@ -191,7 +191,7 @@ arquivo_historico = "historico_caixa.csv"
 if not os.path.exists(arquivo_dados):
     pd.DataFrame({
         "Nome do Aluno": ["Miguel Santos"], "Matrícula": ["Ativo"], "Data de Nascimento": ["2015-05-10"],
-        "Modalidade": ["Natação Infantil"], "Turma": ["Seg/Qua/Sex - 08:00 (Infantil)"], 
+        "Modalidade": ["Natação Infantil"], "Turma": ["Natação Infantil (Seg/Qua/Sex às 08:00)"], 
         "Telefone": ["81988882222"], "Data de Vencimento": ["2026-09-10"], "Status": ["Atrasado"], "Ano_Ultimo_Parabens": [0]
     }).to_csv(arquivo_dados, index=False)
 
@@ -289,7 +289,6 @@ with aba1:
     df_visualizacao["Prioridade"] = df_visualizacao["Status"].map({"Atrasado": 1, "Perto de vencer": 2, "Em dia": 3})
     df_visualizacao = df_visualizacao.sort_values(by="Prioridade").drop(columns=["Prioridade", "Ano_Ultimo_Parabens"])
 
-    # CORREÇÃO DEFINITIVA DO ERRO DE COR DA TABELA ESTÁ AQUI:
     def colorir_linhas(row):
         cores = {'Em dia': '#c3e6cb', 'Atrasado': '#f5c6cb', 'Perto de vencer': '#ffeeba'}
         cor_fundo = cores.get(row['Status'], 'white')
@@ -374,13 +373,51 @@ with aba3:
 with aba4:
     st.header("⚙️ Configurações do Sistema")
     
-    st.subheader("📅 Cadastro de Turmas e Horários")
+    # ---------------------------------------------------------
+    # NOVIDADE: GERADOR INTUITIVO DE TURMAS
+    # ---------------------------------------------------------
+    st.subheader("📅 Gestão Rápida de Turmas e Horários")
+    st.write("Crie turmas rapidamente selecionando as opções abaixo, sem precisar digitar nomes longos na mão.")
+    
+    with st.container(border=True):
+        st.write("**➕ Gerador de Nova Turma**")
+        with st.form("form_criar_turma"):
+            c1, c2, c3, c4 = st.columns(4)
+            with c1:
+                f_mod = st.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
+            with c2:
+                f_dias = st.selectbox("Dias da Aula", ["Seg/Qua/Sex", "Ter/Qui", "Seg a Sex", "Sábado", "Domingo", "Livre"])
+            with c3:
+                # Usa um campo de horário simples
+                f_hora = st.time_input("Horário", value=datetime.strptime("08:00", "%H:%M").time())
+            with c4:
+                f_cap = st.number_input("Limite de Alunos", min_value=1, max_value=100, value=10)
+                
+            if st.form_submit_button("✅ Adicionar à Grade", use_container_width=True):
+                nome_final = f"{f_mod} ({f_dias} às {f_hora.strftime('%H:%M')})"
+                
+                if nome_final in df_turmas["Nome da Turma"].values:
+                    st.error(f"⚠️ A turma '{nome_final}' já existe!")
+                else:
+                    nova_linha = pd.DataFrame([{"Nome da Turma": nome_final, "Capacidade Máxima": f_cap}])
+                    df_turmas_novo = pd.concat([df_turmas, nova_linha], ignore_index=True)
+                    df_turmas_novo.to_csv(arquivo_turmas, index=False)
+                    st.success(f"Turma '{nome_final}' criada com sucesso!")
+                    st.rerun()
+
+    st.write("---")
+    st.write("**📝 Lista de Turmas Ativas**")
+    st.info("💡 Para apagar uma turma, selecione o quadradinho à esquerda da linha e aperte **Delete** no teclado.")
+    
     colunas_turma_conf = {
-        "Nome da Turma": st.column_config.TextColumn("Nome da Turma"),
-        "Capacidade Máxima": st.column_config.NumberColumn("Capacidade Máxima", min_value=1, step=1)
+        "Nome da Turma": st.column_config.TextColumn("Nome Oficial da Turma"),
+        "Capacidade Máxima": st.column_config.NumberColumn("Vagas", min_value=1, step=1)
     }
-    df_turmas_editado = st.data_editor(df_turmas, num_rows="dynamic", column_config=colunas_turma_conf, use_container_width=True, hide_index=True, key="tab_turmas")
-    if st.button("💾 Salvar Grade de Horários", use_container_width=True):
+    
+    # IMPORTANTE: Aqui o hide_index foi removido para ela poder selecionar a linha e apagar
+    df_turmas_editado = st.data_editor(df_turmas, num_rows="dynamic", column_config=colunas_turma_conf, use_container_width=True, key="tab_turmas")
+    
+    if st.button("💾 Salvar Alterações na Lista Acima", use_container_width=True):
         df_turmas_editado.to_csv(arquivo_turmas, index=False); st.success("Atualizado!"); st.rerun()
     st.write("---")
     
