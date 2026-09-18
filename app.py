@@ -11,7 +11,7 @@ import streamlit.components.v1 as components
 st.set_page_config(page_title="Gestão Pingo D'água", layout="wide", page_icon="🏊‍♂️")
 
 # -------------------------------------------------------------------
-# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Meia Folha A4 Exata)
+# 1. FUNÇÃO DA JANELA POP-UP DO RECIBO (Texto Profissional Corrigido)
 # -------------------------------------------------------------------
 @st.dialog("🧾 Comprovante de Pagamento")
 def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
@@ -35,7 +35,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <style>
             body {{ font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif; display: flex; flex-direction: column; align-items: center; background: white; margin: 0; padding: 15px; }}
             
-            /* --- 1. ESTILO DO RECIBO DIGITAL (TELA E WHATSAPP) --- */
+            /* --- RECIBO DIGITAL (TELA E WHATSAPP) --- */
             #recibo-digital {{
                 border: 2px dashed #aaa; padding: 25px; width: 320px; background: #fff;
                 color: #222; margin-bottom: 20px; box-shadow: 2px 2px 10px rgba(0,0,0,0.05);
@@ -50,7 +50,7 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .linha span {{ font-weight: bold; color: #000; font-size: 16px; }}
             .confirmado {{ text-align: center; color: #28a745; font-weight: bold; font-size: 16px; padding: 10px; background: #e6f9e6; border-radius: 5px; margin-top: 20px; border: 1px solid #c3e6cb; }}
             
-            /* --- 2. ESTILO DO RECIBO IMPRESSO (OCULTO NA TELA) --- */
+            /* --- RECIBO IMPRESSO (OCULTO NA TELA) --- */
             #recibo-impresso {{ display: none; }} 
             
             .btn {{ width: 320px; padding: 14px; margin: 5px 0; border: none; border-radius: 8px; font-size: 15px; font-weight: bold; cursor: pointer; transition: 0.2s; display: flex; align-items: center; justify-content: center; gap: 8px; }}
@@ -59,41 +59,41 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
             .btn-down {{ background-color: #f8f9fa; color: #333; border: 1px solid #ddd; }}
             .btn-down:hover {{ background-color: #e2e6ea; }}
             
-            /* --- 3. MÁGICA DA IMPRESSORA (MEIA FOLHA) --- */
+            /* --- MÁGICA DA IMPRESSORA (TEXTO CORRIDO E ESTRUTURADO) --- */
             @media print {{
-                body * {{ visibility: hidden; display: none !important; }} 
-                
-                #recibo-impresso, #recibo-impresso * {{ 
-                    visibility: visible; 
-                    display: block !important; 
-                }} 
+                /* Esconde tudo, exceto o recibo impresso */
+                body > *:not(#recibo-impresso) {{ display: none !important; }} 
                 
                 #recibo-impresso {{
+                    display: flex !important; 
+                    flex-direction: column;
+                    justify-content: space-between;
                     position: absolute; left: 0; top: 0;
                     width: 100%; 
-                    height: 140mm; /* METADE EXATA DA FOLHA A4 */
+                    height: 140mm; /* Metade da folha A4 */
                     font-family: 'Times New Roman', Times, serif;
                     color: black;
                     padding: 10mm 15mm;
                     box-sizing: border-box;
                 }}
                 
-                .print-table {{ width: 100%; border-bottom: 2px solid black; padding-bottom: 10px; margin-bottom: 15px; }}
-                .print-table td {{ display: table-cell !important; vertical-align: middle; }}
-                .print-logo {{ max-height: 65px; }}
-                .print-texto-formal {{ font-size: 16px; line-height: 1.5; text-align: justify; margin-bottom: 10px; }}
-                .print-assinatura {{ text-align: center; margin-top: 25px; font-size: 15px; }}
-                .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 25px auto 5px auto; }}
+                .print-header {{ display: flex; justify-content: space-between; align-items: center; border-bottom: 2px solid black; padding-bottom: 15px; }}
+                .print-logo {{ max-height: 70px; }}
+                .print-empresa {{ text-align: center; flex-grow: 1; }}
+                .print-empresa h2 {{ margin: 0; font-size: 22px; }}
+                .print-empresa p {{ margin: 3px 0 0 0; font-size: 14px; color: #333; }}
+                .print-valor {{ text-align: right; width: 25%; }}
+                .print-valor h2 {{ margin: 0; font-size: 20px; font-weight: normal; text-transform: uppercase; }}
+                .print-valor h3 {{ margin: 5px 0 0 0; font-size: 24px; }}
                 
-                .print-tesoura {{ 
-                    position: absolute; 
-                    bottom: 0; left: 0; width: 100%; 
-                    border-top: 1px dashed #666; 
-                    text-align: center; color: #666; 
-                    padding-top: 5px; 
-                    font-family: Arial, sans-serif; 
-                    font-size: 12px; 
-                }}
+                /* Texto corrido profissional */
+                .print-body {{ font-size: 18px; line-height: 1.6; text-align: justify; margin-top: 25px; }}
+                
+                .print-footer {{ text-align: center; margin-top: auto; }}
+                .print-linha-ass {{ border-top: 1px solid black; width: 60%; margin: 35px auto 5px auto; }}
+                .print-footer p {{ margin: 3px 0; font-size: 16px; }}
+                
+                .print-tesoura {{ border-top: 1px dashed #666; text-align: center; color: #666; padding-top: 5px; font-family: Arial, sans-serif; font-size: 12px; margin-top: 15px; }}
             }}
         </style>
     </head>
@@ -115,37 +115,31 @@ def abrir_janela_recibo(nome_aluno, modalidade, valor_pago, telefone):
         <div class="confirmado">✅ PAGAMENTO CONFIRMADO</div>
     </div>
 
-    <!-- RECIBO IMPRESSO (COMPACTADO PARA MEIA FOLHA) -->
+    <!-- RECIBO IMPRESSO (CORRIGIDO) -->
     <div id="recibo-impresso">
-        <table class="print-table">
-            <tr>
-                <td style="width: 25%;"><img src="data:image/png;base64,{img_base64}" class="print-logo"></td>
-                <td style="width: 50%;">
-                    <h2 style="margin: 0; font-size: 20px;">PINGO D'ÁGUA NATAÇÃO</h2>
-                    <p style="margin: 3px 0 0 0; font-size: 14px;">CNPJ: 00.000.000/0001-00</p>
-                    <p style="margin: 3px 0 0 0; font-size: 14px;">Jaboatão dos Guararapes - PE</p>
-                </td>
-                <td style="width: 25%; text-align: right;">
-                    <h2 style="margin: 0; font-size: 22px; font-weight: normal;">RECIBO</h2>
-                    <h3 style="margin: 5px 0 0 0; font-size: 22px;">R$ {valor_pago}</h3>
-                </td>
-            </tr>
-        </table>
-        
-        <div class="print-texto-formal">
-            Recebemos de <strong>{nome_seguro}</strong>, a quantia de <strong>R$ {valor_pago}</strong>, 
-            referente ao pagamento da mensalidade de <strong>{modalidade}</strong>.
+        <div class="print-header">
+            <div style="width: 25%;"><img src="data:image/png;base64,{img_base64}" class="print-logo"></div>
+            <div class="print-empresa">
+                <h2>PINGO D'ÁGUA NATAÇÃO</h2>
+                <p>CNPJ: 00.000.000/0001-00</p>
+                <p>Jaboatão dos Guararapes - PE</p>
+            </div>
+            <div class="print-valor">
+                <h2>RECIBO</h2>
+                <h3>R$ {valor_pago}</h3>
+            </div>
         </div>
         
-        <div class="print-texto-formal">
+        <div class="print-body">
+            Recebemos de <strong>{nome_seguro}</strong> a quantia de <strong>R$ {valor_pago}</strong>, referente ao pagamento da mensalidade da modalidade de <strong>{modalidade}</strong>.<br><br>
             Para maior clareza e validade, firmamos o presente recibo.
         </div>
         
-        <div class="print-assinatura">
-            <p style="margin: 0;">Jaboatão dos Guararapes, {data_hoje}</p>
+        <div class="print-footer">
+            <p>Jaboatão dos Guararapes, {data_hoje}</p>
             <div class="print-linha-ass"></div>
-            <p style="margin: 0;"><strong>Assinatura do Responsável</strong></p>
-            <p style="margin: 3px 0 0 0;">Pingo D'água Natação</p>
+            <p><strong>Assinatura do Responsável</strong></p>
+            <p>Pingo D'água Natação</p>
         </div>
         
         <div class="print-tesoura">
