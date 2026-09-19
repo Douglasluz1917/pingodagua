@@ -169,6 +169,7 @@ if "pagamentos_recentes" not in st.session_state: st.session_state["pagamentos_r
 if "recibos_ocultos" not in st.session_state: st.session_state["recibos_ocultos"] = set()
 
 hoje = datetime.now().date()
+data_limite_nascimento = datetime(1920, 1, 1).date() # Liberando o calendário até 1920!
 
 arquivo_precos = "banco_precos.csv"
 if not os.path.exists(arquivo_precos):
@@ -266,7 +267,8 @@ with aba1:
         turmas_da_mod = df_turmas[df_turmas["Nome da Turma"].str.startswith(novo_mod, na=False)]["Nome da Turma"].tolist()
         nova_turma = c4.selectbox("Turma / Horário (Filtro Automático)", ["Sem Turma"] + turmas_da_mod)
         
-        novo_nasc = c5.date_input("Data de Nascimento", format="DD/MM/YYYY")
+        # AQUI ESTÁ A CORREÇÃO! min_value configurado para aceitar desde 1920
+        novo_nasc = c5.date_input("Data de Nascimento", min_value=data_limite_nascimento, max_value=hoje, format="DD/MM/YYYY")
         novo_venc = c6.date_input("1º Vencimento", format="DD/MM/YYYY")
         
         if st.button("✅ Confirmar Matrícula", type="primary", use_container_width=True):
@@ -294,7 +296,8 @@ with aba1:
         "Matrícula": st.column_config.SelectboxColumn("Matrícula", options=["Ativo", "Inativo"]),
         "Modalidade": st.column_config.SelectboxColumn("Modalidade", options=list(TABELA_PRECOS.keys())),
         "Turma": st.column_config.SelectboxColumn("Turma (Horário)", options=lista_turmas),
-        "Data de Nascimento": st.column_config.DateColumn("Nascimento", format="DD/MM/YYYY"),
+        # AQUI TAMBÉM FOI CORRIGIDO para permitir edição de datas antigas na tabela
+        "Data de Nascimento": st.column_config.DateColumn("Nascimento", format="DD/MM/YYYY", min_value=data_limite_nascimento, max_value=hoje),
         "Data de Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY"),
         "Telefone": st.column_config.TextColumn("Telefone"),
         "Ano_Ultimo_Parabens": None
@@ -435,7 +438,6 @@ with aba4:
             with c1: 
                 f_mod = st.selectbox("Modalidade", list(TABELA_PRECOS.keys()))
             with c2: 
-                # NOVIDADE: MÚLTIPLA ESCOLHA DOS DIAS DA SEMANA
                 f_dias_lista = st.multiselect(
                     "Dias da Aula", 
                     ["Seg", "Ter", "Qua", "Qui", "Sex", "Sáb", "Dom"],
@@ -447,7 +449,6 @@ with aba4:
                 f_cap = st.number_input("Capacidade", min_value=1, max_value=100, value=10)
                 
             if st.form_submit_button("✅ Adicionar à Grade", use_container_width=True):
-                # Junta os dias separados por barra, ex: Seg/Ter/Sex
                 if len(f_dias_lista) > 0:
                     str_dias = "/".join(f_dias_lista)
                 else:
