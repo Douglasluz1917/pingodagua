@@ -169,7 +169,7 @@ if "pagamentos_recentes" not in st.session_state: st.session_state["pagamentos_r
 if "recibos_ocultos" not in st.session_state: st.session_state["recibos_ocultos"] = set()
 
 hoje = datetime.now().date()
-data_limite_nascimento = datetime(1920, 1, 1).date() # Liberando o calendário até 1920!
+data_limite_nascimento = datetime(1900, 1, 1).date()
 
 arquivo_precos = "banco_precos.csv"
 if not os.path.exists(arquivo_precos):
@@ -267,28 +267,35 @@ with aba1:
         turmas_da_mod = df_turmas[df_turmas["Nome da Turma"].str.startswith(novo_mod, na=False)]["Nome da Turma"].tolist()
         nova_turma = c4.selectbox("Turma / Horário (Filtro Automático)", ["Sem Turma"] + turmas_da_mod)
         
-        # AQUI ESTÁ A CORREÇÃO! min_value configurado para aceitar desde 1920
-        novo_nasc = c5.date_input("Data de Nascimento", min_value=data_limite_nascimento, max_value=hoje, format="DD/MM/YYYY")
+        # --- AQUI ESTÁ A MÁGICA: Campo de texto livre para Nascimento ---
+        novo_nasc = c5.text_input("Data Nasc. (DD/MM/AAAA)", placeholder="Ex: 08/02/1991")
+        
         novo_venc = c6.date_input("1º Vencimento", format="DD/MM/YYYY")
         
         if st.button("✅ Confirmar Matrícula", type="primary", use_container_width=True):
             if novo_nome.strip() == "":
                 st.error("⚠️ Preencha o nome do aluno!")
             else:
-                novo_aluno = pd.DataFrame([{
-                    "Nome do Aluno": novo_nome, "Matrícula": "Ativo", "Data de Nascimento": novo_nasc.strftime("%Y-%m-%d"),
-                    "Modalidade": novo_mod, "Turma": nova_turma, "Telefone": novo_tel,
-                    "Data de Vencimento": novo_venc.strftime("%Y-%m-%d"), "Status": "Em dia", "Ano_Ultimo_Parabens": 0
-                }])
-                df_atualizado = pd.concat([df, novo_aluno], ignore_index=True)
-                df_atualizado.to_csv(arquivo_dados, index=False)
-                if "tabela_alunos" in st.session_state: del st.session_state["tabela_alunos"]
-                st.success(f"🎉 Aluno {novo_nome} matriculado com sucesso na turma {nova_turma}!")
-                st.rerun()
+                try:
+                    # Converte o que a pessoa digitou de forma segura
+                    nasc_formatado = pd.to_datetime(novo_nasc.strip(), format="%d/%m/%Y").strftime("%Y-%m-%d") if novo_nasc.strip() else ""
+                    
+                    novo_aluno = pd.DataFrame([{
+                        "Nome do Aluno": novo_nome, "Matrícula": "Ativo", "Data de Nascimento": nasc_formatado,
+                        "Modalidade": novo_mod, "Turma": nova_turma, "Telefone": novo_tel,
+                        "Data de Vencimento": novo_venc.strftime("%Y-%m-%d"), "Status": "Em dia", "Ano_Ultimo_Parabens": 0
+                    }])
+                    df_atualizado = pd.concat([df, novo_aluno], ignore_index=True)
+                    df_atualizado.to_csv(arquivo_dados, index=False)
+                    if "tabela_alunos" in st.session_state: del st.session_state["tabela_alunos"]
+                    st.success(f"🎉 Aluno {novo_nome} matriculado com sucesso na turma {nova_turma}!")
+                    st.rerun()
+                except ValueError:
+                    st.error("⚠️ Formato de Data de Nascimento inválido! Por favor, digite os números no padrão Dia/Mês/Ano (Ex: 08/02/1991)")
 
     st.write("---")
     st.subheader("📝 Edição Rápida e Consulta (Todos os Alunos)")
-    st.info("💡 Para adicionar um novo aluno, use o formulário acima. Use esta tabela apenas para ajustes rápidos ou para desativar matrículas.")
+    st.info("💡 Para alterar a data de nascimento ou vencimento aqui na tabela abaixo, você também não precisa clicar no calendário: dê 2 cliques na caixinha e **digite a data direto pelo teclado**.")
     
     colunas_config = {
         "Status": st.column_config.TextColumn("Status", disabled=True),
@@ -296,8 +303,7 @@ with aba1:
         "Matrícula": st.column_config.SelectboxColumn("Matrícula", options=["Ativo", "Inativo"]),
         "Modalidade": st.column_config.SelectboxColumn("Modalidade", options=list(TABELA_PRECOS.keys())),
         "Turma": st.column_config.SelectboxColumn("Turma (Horário)", options=lista_turmas),
-        # AQUI TAMBÉM FOI CORRIGIDO para permitir edição de datas antigas na tabela
-        "Data de Nascimento": st.column_config.DateColumn("Nascimento", format="DD/MM/YYYY", min_value=data_limite_nascimento, max_value=hoje),
+        "Data de Nascimento": st.column_config.DateColumn("Nascimento", format="DD/MM/YYYY", min_value=data_limite_nascimento),
         "Data de Vencimento": st.column_config.DateColumn("Vencimento", format="DD/MM/YYYY"),
         "Telefone": st.column_config.TextColumn("Telefone"),
         "Ano_Ultimo_Parabens": None
